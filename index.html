@@ -1,0 +1,3518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alfred — Your Life OS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  /* Pure B&W palette */
+  --bg:#000000;--surface:#0a0a0a;--surface2:#111111;--surface3:#1a1a1a;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.12);--border3:rgba(255,255,255,0.2);
+  --text:#f0f0f0;--text2:#888888;--text3:#444444;
+  /* Accent = pure white for primary actions */
+  --accent:#ffffff;--accent-bg:rgba(255,255,255,0.06);
+  /* Functional colors — desaturated */
+  --green:#4ade80;--green-bg:rgba(74,222,128,0.08);
+  --red:#f87171;--red-bg:rgba(248,113,113,0.08);
+  --blue:#60a5fa;--blue-bg:rgba(96,165,250,0.08);
+  --yellow:#facc15;--yellow-bg:rgba(250,204,21,0.08);
+  /* XP level colors */
+  --xp-bar:#ffffff;--xp-track:#1a1a1a;
+  /* Legacy aliases so existing CSS doesn't break */
+  --gold:#ffffff;--gold2:#cccccc;--gold-bg:rgba(255,255,255,0.06);
+  --r:10px;--rs:6px;
+  font-family:'Space Grotesk',sans-serif;color-scheme:dark;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden;font-size:14px}
+.screen{display:none;height:100vh}
+.screen.active{display:flex}
+#auth-screen{align-items:center;justify-content:center;background:var(--bg);background-image:radial-gradient(ellipse 60% 50% at 50% 0%,rgba(255,255,255,0.04) 0%,transparent 70%)}
+.auth-box{width:420px;padding:48px;background:var(--surface);border:1px solid var(--border2);border-radius:20px}
+.auth-logo{text-align:center;margin-bottom:36px}
+.auth-logo .mark{width:52px;height:52px;border-radius:10px;background:#fff;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:22px;color:#000;font-weight:500;letter-spacing:-1px}
+.auth-logo h1{font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:600;color:var(--text);letter-spacing:-0.5px}
+.auth-logo p{font-size:13px;color:var(--text2);margin-top:4px}
+.auth-tabs{display:flex;background:var(--surface2);border-radius:var(--rs);padding:3px;margin-bottom:28px}
+.auth-tab{flex:1;text-align:center;padding:8px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--text2);transition:all .2s}
+.auth-tab.active{background:var(--surface3);color:var(--text)}
+.field-group{margin-bottom:16px}
+.field-group label{display:block;font-size:12px;color:var(--text2);margin-bottom:6px;letter-spacing:0.3px}
+.field-group input,.field-group select{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--rs);padding:11px 14px;font-size:14px;color:var(--text);font-family:'Outfit',sans-serif;outline:none;transition:border .2s}
+.field-group input:focus,.field-group select:focus{border-color:var(--gold)}
+.btn-auth{width:100%;padding:13px;border-radius:var(--rs);background:#ffffff;border:none;color:#000000;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s;margin-top:4px;letter-spacing:0.3px}
+.btn-auth:hover{opacity:.88}
+.auth-error{color:var(--red);font-size:12px;margin-top:10px;text-align:center;min-height:18px}
+#app-screen{flex-direction:row}
+.sidebar{width:230px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sidebar-header{padding:22px 18px 16px;display:flex;align-items:center;gap:11px}
+.sidebar-mark{width:32px;height:32px;border-radius:9px;background:var(--gold);display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-size:17px;color:#0f0e0c;font-weight:500;flex-shrink:0}
+.sidebar-brand{font-family:'Space Grotesk',sans-serif;font-size:19px;color:var(--text);letter-spacing:-0.3px}
+.sidebar-brand span{color:var(--text2);font-size:11px;font-family:'Outfit',sans-serif;display:block;margin-top:-2px;font-weight:300}
+.nav-section-label{padding:10px 20px 4px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-weight:400}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 14px;margin:1px 8px;border-radius:8px;cursor:pointer;color:var(--text2);font-size:13.5px;transition:all .15s;position:relative}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--surface3);color:var(--text)}
+.nav-item.active::before{content:'';position:absolute;left:-8px;top:50%;transform:translateY(-50%);width:2px;height:16px;background:#ffffff;border-radius:0 2px 2px 0}
+.nav-icon{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+.nav-badge{margin-left:auto;background:#ffffff;color:#000000;font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;font-family:'JetBrains Mono',monospace}
+.alfred-nav-btn{margin:8px 12px;padding:10px 14px;border-radius:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);display:flex;align-items:center;gap:10px;cursor:pointer;transition:all .2s}
+.alfred-nav-btn:hover{background:rgba(255,255,255,0.09)}
+.alfred-pulse{width:7px;height:7px;border-radius:50%;background:#ffffff;animation:pulse 2.5s ease-in-out infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+.alfred-nav-text{font-size:13px;color:#ffffff;font-weight:500;letter-spacing:0.3px}
+.sidebar-footer{margin-top:auto;padding:14px 16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.user-avatar{width:34px;height:34px;border-radius:50%;background:#ffffff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#000000;flex-shrink:0;font-family:'JetBrains Mono',monospace}
+.user-info .user-name{font-size:13px;color:var(--text);font-weight:500}
+.user-info .user-email{font-size:11px;color:var(--text3)}
+.logout-btn{margin-left:auto;font-size:11px;color:var(--text3);cursor:pointer;padding:4px 8px;border-radius:5px;transition:all .15s}
+.logout-btn:hover{color:var(--red);background:var(--red-bg)}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{padding:16px 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;flex-shrink:0}
+.topbar-left h2{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:400;letter-spacing:-0.3px;color:var(--text)}
+.topbar-left .topbar-sub{font-size:12px;color:var(--text2);margin-top:1px}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.btn{padding:8px 16px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:13px;font-family:'Outfit',sans-serif;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:var(--surface3)}
+.btn-gold{background:#ffffff;color:#000000;border-color:transparent;font-weight:600;letter-spacing:0.2px}
+.btn-gold:hover{background:#e0e0e0;opacity:1}
+.btn-cancel{background:transparent;border:1px solid var(--border2);color:var(--text2)}
+.content{flex:1;overflow-y:auto;padding:28px}
+.content::-webkit-scrollbar{width:4px}
+.content::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.panel{display:none}
+.panel.active{display:block}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.card-title{font-size:12px;letter-spacing:.8px;text-transform:uppercase;color:var(--text2);font-weight:400}
+.card-action{font-size:12px;color:var(--text3);cursor:pointer;transition:color .15s;background:none;border:none;font-family:'Outfit',sans-serif}
+.card-action:hover{color:var(--gold)}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;cursor:pointer;transition:border-color .2s}
+.stat-card:hover{border-color:var(--border2)}
+.stat-card .s-label{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
+.stat-card .s-value{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:500;letter-spacing:-1px;color:var(--text)}
+.stat-card .s-sub{font-size:12px;color:var(--text2);margin-top:3px}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px}
+.dash-grid{display:grid;grid-template-columns:1fr 300px;gap:14px}
+.task-item{display:flex;align-items:flex-start;gap:11px;padding:10px 0;border-bottom:1px solid var(--border)}
+.task-item:last-child{border-bottom:none}
+.task-check{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--text3);flex-shrink:0;margin-top:1px;cursor:pointer;transition:all .2s;position:relative}
+.task-check:hover{border-color:var(--green)}
+.task-check.done{background:var(--green);border-color:var(--green)}
+.task-check.done::after{content:'';position:absolute;left:5px;top:2px;width:5px;height:9px;border:2px solid #0f0e0c;border-top:none;border-left:none;transform:rotate(45deg)}
+.task-body{flex:1}
+.task-title{font-size:14px;color:var(--text);line-height:1.4}
+.task-title.done{text-decoration:line-through;color:var(--text3)}
+.task-meta{display:flex;gap:6px;margin-top:4px;flex-wrap:wrap}
+.tag{font-size:11px;padding:2px 8px;border-radius:20px;background:var(--surface2);color:var(--text2)}
+.tag.urgent{background:rgba(255,255,255,0.08);color:#ffffff;border:1px solid rgba(255,255,255,0.2)}
+.tag.person{background:var(--blue-bg);color:var(--blue)}
+.tag.place{background:var(--green-bg);color:var(--green)}
+.suggest-item{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:13px 15px;margin-bottom:10px;cursor:pointer;transition:border-color .2s}
+.suggest-item:hover{border-color:rgba(200,169,110,.3)}
+.suggest-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text2);margin-bottom:5px;font-family:'JetBrains Mono',monospace}
+.suggest-text{font-size:13.5px;color:var(--text);line-height:1.55}
+#panel-alfred{display:none}
+#panel-alfred.active{display:flex;flex-direction:column;height:calc(100vh - 70px)}
+.chat-header{padding:0 0 18px;border-bottom:1px solid var(--border);margin-bottom:18px;flex-shrink:0}
+.chat-header h2{font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:400;color:var(--text)}
+.chat-header p{font-size:13px;color:var(--text2);margin-top:3px}
+.chat-messages{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:16px;padding-right:4px;min-height:0}
+.chat-messages::-webkit-scrollbar{width:4px}
+.chat-messages::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.msg{display:flex;gap:12px;max-width:85%}
+.msg.user{flex-direction:row-reverse;align-self:flex-end}
+.msg-avatar{width:30px;height:30px;border-radius:50%;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;font-size:12px}
+.msg-avatar.alfred{background:var(--gold);color:#0f0e0c;font-family:'Space Grotesk',sans-serif;font-weight:500;font-size:14px}
+.msg-avatar.user{background:var(--surface3);color:var(--text);font-weight:500}
+.msg-bubble{background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:12px 16px;font-size:14px;line-height:1.65;color:var(--text)}
+.msg.user .msg-bubble{background:var(--surface3);border-color:var(--border2)}
+.msg-bubble strong{color:var(--gold2);font-weight:500}
+.typing-dots{display:flex;gap:5px;padding:4px 0}
+.typing-dots span{width:7px;height:7px;border-radius:50%;background:var(--text3);animation:typing 1.2s ease-in-out infinite}
+.typing-dots span:nth-child(2){animation-delay:.2s}
+.typing-dots span:nth-child(3){animation-delay:.4s}
+@keyframes typing{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
+.chat-chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.chip{padding:5px 13px;border-radius:20px;border:1px solid var(--border2);background:var(--surface);font-size:12.5px;color:var(--text2);cursor:pointer;transition:all .15s}
+.chip:hover{border-color:var(--gold);color:var(--gold)}
+.chat-input-area{padding-top:16px;border-top:1px solid var(--border);display:flex;gap:10px;flex-shrink:0;margin-top:16px}
+.chat-input{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:12px 16px;font-size:14px;color:var(--text);font-family:'Outfit',sans-serif;outline:none;resize:none;line-height:1.5;transition:border-color .2s}
+.chat-input:focus{border-color:var(--gold)}
+.chat-send{padding:12px 18px;background:#ffffff;border:none;border-radius:10px;color:#000000;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s;align-self:flex-end;white-space:nowrap;letter-spacing:0.2px}
+.chat-send:hover{opacity:.88}
+.chat-send:disabled{opacity:.4;cursor:not-allowed}
+.people-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.person-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;transition:border-color .2s}
+.person-card:hover{border-color:var(--border2)}
+.person-top{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.p-avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;flex-shrink:0}
+.p-name{font-size:15px;font-weight:500;color:var(--text)}
+.p-sub{font-size:12px;color:var(--text2);margin-top:2px}
+.p-fields{display:flex;flex-direction:column;gap:6px}
+.p-field{display:flex;gap:8px;font-size:13px}
+.p-field-label{color:var(--text3);min-width:90px;flex-shrink:0}
+.p-field-val{color:var(--text)}
+.p-alfred-note{margin-top:12px;font-size:12px;color:var(--text2);font-style:normal;border-left:1px solid rgba(255,255,255,0.2);padding-left:10px;font-family:'JetBrains Mono',monospace}
+.filter-row{display:flex;gap:7px;margin-bottom:14px;flex-wrap:wrap}
+.filter-btn{padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface);font-size:12px;color:var(--text2);cursor:pointer;transition:all .15s;font-family:'Outfit',sans-serif}
+.filter-btn:hover,.filter-btn.active{border-color:var(--gold);color:var(--gold);background:var(--gold-bg)}
+.places-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.place-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:15px 17px;cursor:pointer;transition:border-color .2s}
+.place-card:hover{border-color:var(--border2)}
+.place-name{font-size:14px;font-weight:500;color:var(--text);margin-bottom:3px}
+.place-type{font-size:11px;color:var(--text3);margin-bottom:8px}
+.place-stars{color:#ffffff;font-size:12px;margin-bottom:8px;letter-spacing:2px}
+.place-note{font-size:12px;color:var(--text2);font-style:italic;border-left:2px solid var(--border2);padding-left:8px}
+.finance-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.fin-stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
+.fin-stat .s-label{font-size:11px;letter-spacing:.8px;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+.fin-stat .s-val{font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:400;color:var(--text)}
+.fin-stat .s-note{font-size:12px;color:var(--text2);margin-top:3px}
+.up{color:var(--green)}.down{color:var(--red)}
+.bar-chart-area{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px}
+.bar-row{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.bar-row:last-child{margin-bottom:0}
+.bar-label{width:90px;font-size:12.5px;color:var(--text2);text-align:right;flex-shrink:0}
+.bar-track{flex:1;height:6px;background:var(--surface3);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px}
+.bar-amount{width:55px;font-size:12.5px;color:var(--text);text-align:right;flex-shrink:0}
+.tx-list{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px}
+.tx-item{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)}
+.tx-item:last-child{border-bottom:none}
+.tx-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.tx-name{font-size:13.5px;color:var(--text)}
+.tx-sub{font-size:12px;color:var(--text3)}
+.tx-amt{margin-left:auto;font-size:14px;font-weight:500}
+.expense{color:var(--red)}.income{color:var(--green)}
+/* MODAL — each is a fully independent overlay */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(4px)}
+.modal-overlay.hidden{display:none !important}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:32px;width:460px;max-width:90vw;max-height:85vh;overflow-y:auto}
+.modal h3{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:400;margin-bottom:6px;color:var(--text)}
+.modal .modal-sub{font-size:13px;color:var(--text2);margin-bottom:24px}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:24px}
+.api-banner{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-shrink:0;flex-wrap:wrap}
+.api-banner-text{font-size:13px;color:var(--text);flex:1;line-height:1.5;min-width:200px}
+.api-banner input{background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:7px 12px;font-size:13px;color:var(--text);font-family:'Outfit',sans-serif;outline:none;width:200px;transition:border .2s}
+.api-banner input:focus{border-color:var(--gold)}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface3);border:1px solid var(--border2);padding:10px 20px;border-radius:10px;font-size:13px;color:var(--text);opacity:0;transition:all .3s;z-index:200;white-space:nowrap;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+
+
+/* MapLibre popup style */
+.maplibregl-popup-content{background:#201e1a;border:1px solid rgba(255,255,255,0.13);border-radius:10px;padding:12px 14px;font-family:'Outfit',sans-serif;box-shadow:0 8px 32px rgba(0,0,0,.6);color:#e8e2d8;min-width:160px;}
+.maplibregl-popup-tip{border-top-color:#201e1a !important;border-bottom-color:#201e1a !important;}
+.maplibregl-popup-close-button{color:#9a9188;font-size:16px;right:8px;top:6px;}
+.maplibregl-popup-close-button:hover{color:#e8e2d8;background:none;}
+.maplibregl-ctrl-group{background:#201e1a !important;border:1px solid rgba(255,255,255,0.13) !important;}
+.maplibregl-ctrl button{color:#e8e2d8 !important;}
+.maplibregl-ctrl-attrib{background:rgba(15,14,12,.75) !important;color:#5a5450 !important;font-size:9px;}
+.maplibregl-ctrl-attrib a{color:#5a5450 !important;}
+.pop-name{font-size:14px;font-weight:500;color:#e8e2d8;margin-bottom:3px;}
+.pop-type{font-size:11px;color:#5a5450;margin-bottom:5px;text-transform:capitalize;}
+.pop-stars{color:#c8a96e;font-size:12px;margin-bottom:5px;letter-spacing:1px;}
+.pop-note{font-size:12px;color:#9a9188;font-style:italic;}
+
+
+/* ── XP / LEVEL SYSTEM ───────────────────────────── */
+.xp-bar-wrap{padding:14px 20px;border-bottom:1px solid var(--border);flex-shrink:0}
+.xp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.xp-level-badge{display:flex;align-items:center;gap:7px}
+.xp-level-num{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;color:#000;background:#fff;padding:2px 8px;border-radius:4px;letter-spacing:0.5px}
+.xp-level-name{font-size:11px;color:var(--text2);letter-spacing:1px;text-transform:uppercase}
+.xp-pts{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)}
+.xp-track{height:3px;background:var(--surface3);border-radius:2px;overflow:hidden}
+.xp-fill{height:100%;background:#ffffff;border-radius:2px;transition:width .6s cubic-bezier(0.34,1.56,0.64,1)}
+.xp-streak{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text3);margin-top:6px;font-family:'JetBrains Mono',monospace}
+.xp-streak.active{color:var(--text)}
+
+/* XP popup animation */
+.xp-popup{position:fixed;left:50%;transform:translateX(-50%) translateY(0);bottom:80px;background:#fff;color:#000;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;padding:8px 18px;border-radius:20px;z-index:999;pointer-events:none;opacity:0;transition:all .4s}
+.xp-popup.show{opacity:1;transform:translateX(-50%) translateY(-10px)}
+.xp-popup.hide{opacity:0;transform:translateX(-50%) translateY(-30px)}
+
+/* Level up modal */
+.levelup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:500;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s}
+.levelup-overlay.show{opacity:1;pointer-events:all}
+.levelup-box{text-align:center;padding:48px 40px;max-width:340px}
+.levelup-num{font-family:'JetBrains Mono',monospace;font-size:80px;font-weight:500;color:#fff;line-height:1;margin-bottom:8px;animation:levelup-pop .5s cubic-bezier(0.34,1.56,0.64,1)}
+.levelup-label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--text2);margin-bottom:4px}
+.levelup-name{font-size:22px;font-weight:600;color:#fff;margin-bottom:24px}
+.levelup-desc{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:28px}
+@keyframes levelup-pop{from{transform:scale(0.5);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes scan{0%{transform:translateY(-100%)}100%{transform:translateY(100vh)}}
+.scan-line{position:absolute;left:0;right:0;height:1px;background:rgba(255,255,255,0.1);animation:scan 2s linear infinite;pointer-events:none}
+
+/* Task priority dots */
+.task-priority{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.task-priority.high{background:#f87171}
+.task-priority.medium{background:#ffffff}
+.task-priority.low{background:var(--text3)}
+
+/* Category pill select */
+.cat-pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.cat-pill{padding:5px 12px;border-radius:20px;border:1px solid var(--border2);background:none;color:var(--text2);font-size:12px;cursor:pointer;transition:all .15s;font-family:'Space Grotesk',sans-serif}
+.cat-pill:hover{border-color:rgba(255,255,255,0.3);color:var(--text)}
+.cat-pill.selected{background:#fff;color:#000;border-color:#fff;font-weight:500}
+
+
+/* ═══════════════════════════════════════
+   ANIMATION SYSTEM
+════════════════════════════════════════ */
+
+/* --- Page/Panel transitions --- */
+@keyframes fadeSlideUp {
+  from { opacity:0; transform:translateY(18px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+@keyframes fadeSlideIn {
+  from { opacity:0; transform:translateX(-12px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+@keyframes fadeIn {
+  from { opacity:0; }
+  to   { opacity:1; }
+}
+@keyframes scaleIn {
+  from { opacity:0; transform:scale(0.96); }
+  to   { opacity:1; transform:scale(1); }
+}
+
+/* Panel entrance */
+.panel.active {
+  animation: fadeSlideUp 0.28s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+/* Auth box entrance */
+.auth-box {
+  animation: scaleIn 0.35s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+/* Sidebar stagger */
+.nav-item { opacity:0; animation: fadeSlideIn 0.25s cubic-bezier(0.22,1,0.36,1) both; }
+.nav-item:nth-child(1){animation-delay:.05s}
+.nav-item:nth-child(2){animation-delay:.08s}
+.nav-item:nth-child(3){animation-delay:.11s}
+.nav-item:nth-child(4){animation-delay:.14s}
+.nav-item:nth-child(5){animation-delay:.17s}
+.nav-item:nth-child(6){animation-delay:.20s}
+.nav-item:nth-child(7){animation-delay:.23s}
+
+/* Card entrance stagger */
+.card { animation: fadeSlideUp 0.3s cubic-bezier(0.22,1,0.36,1) both; }
+.stat-card { animation: fadeSlideUp 0.3s cubic-bezier(0.22,1,0.36,1) both; }
+.stat-card:nth-child(1){animation-delay:.04s}
+.stat-card:nth-child(2){animation-delay:.09s}
+.stat-card:nth-child(3){animation-delay:.14s}
+
+/* Task items stagger in */
+@keyframes taskIn {
+  from { opacity:0; transform:translateX(-8px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+.task-item {
+  animation: taskIn 0.22s cubic-bezier(0.22,1,0.36,1) both;
+}
+.task-item:nth-child(1){animation-delay:.02s}
+.task-item:nth-child(2){animation-delay:.05s}
+.task-item:nth-child(3){animation-delay:.08s}
+.task-item:nth-child(4){animation-delay:.11s}
+.task-item:nth-child(5){animation-delay:.14s}
+.task-item:nth-child(6){animation-delay:.17s}
+
+/* Person cards */
+.person-card {
+  animation: scaleIn 0.28s cubic-bezier(0.22,1,0.36,1) both;
+}
+.person-card:nth-child(1){animation-delay:.04s}
+.person-card:nth-child(2){animation-delay:.10s}
+.person-card:nth-child(3){animation-delay:.16s}
+.person-card:nth-child(4){animation-delay:.22s}
+
+/* Place cards */
+.place-card {
+  animation: scaleIn 0.28s cubic-bezier(0.22,1,0.36,1) both;
+}
+.place-card:nth-child(1){animation-delay:.04s}
+.place-card:nth-child(2){animation-delay:.09s}
+.place-card:nth-child(3){animation-delay:.14s}
+.place-card:nth-child(4){animation-delay:.19s}
+
+/* Finance bars animate width on load */
+@keyframes barGrow {
+  from { width: 0 !important; }
+}
+.bar-fill { animation: barGrow 0.9s cubic-bezier(0.22,1,0.36,1) both; }
+.bar-row:nth-child(1) .bar-fill{animation-delay:.1s}
+.bar-row:nth-child(2) .bar-fill{animation-delay:.2s}
+.bar-row:nth-child(3) .bar-fill{animation-delay:.3s}
+.bar-row:nth-child(4) .bar-fill{animation-delay:.4s}
+.bar-row:nth-child(5) .bar-fill{animation-delay:.5s}
+
+/* Transaction items */
+.tx-item {
+  animation: fadeSlideUp 0.22s cubic-bezier(0.22,1,0.36,1) both;
+}
+.tx-item:nth-child(1){animation-delay:.05s}
+.tx-item:nth-child(2){animation-delay:.10s}
+.tx-item:nth-child(3){animation-delay:.15s}
+.tx-item:nth-child(4){animation-delay:.20s}
+
+/* Chat messages */
+.msg {
+  animation: fadeSlideUp 0.22s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+/* Suggest items */
+.suggest-item {
+  animation: fadeSlideUp 0.25s cubic-bezier(0.22,1,0.36,1) both;
+}
+.suggest-item:nth-child(1){animation-delay:.05s}
+.suggest-item:nth-child(2){animation-delay:.12s}
+.suggest-item:nth-child(3){animation-delay:.19s}
+
+/* Topbar slide down */
+.topbar {
+  animation: fadeSlideIn 0.3s cubic-bezier(0.22,1,0.36,1) both;
+  animation-delay: .05s;
+}
+
+/* XP bar slide */
+.xp-bar-wrap {
+  animation: fadeIn 0.4s ease both;
+  animation-delay: .1s;
+}
+
+/* --- Interactive micro-animations --- */
+
+/* Task check pop */
+.task-check {
+  transition: transform 0.15s cubic-bezier(0.34,1.56,0.64,1), background 0.2s, border-color 0.2s;
+}
+.task-check:active { transform: scale(0.82); }
+.task-check.done   { animation: checkPop 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+@keyframes checkPop {
+  0%  { transform: scale(1); }
+  40% { transform: scale(1.35); }
+  100%{ transform: scale(1); }
+}
+
+/* Button press */
+.btn, .btn-auth, .btn-gold, .chat-send {
+  transition: transform 0.12s cubic-bezier(0.34,1.56,0.64,1), opacity 0.15s, background 0.15s, border-color 0.15s;
+}
+.btn:active, .btn-auth:active, .chat-send:active { transform: scale(0.95); }
+
+/* Nav item hover slide */
+.nav-item {
+  transition: background 0.15s, color 0.15s, transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
+}
+.nav-item:hover { transform: translateX(3px); }
+.nav-item.active { transform: translateX(3px); }
+
+/* Stat card lift */
+.stat-card {
+  transition: transform 0.2s cubic-bezier(0.22,1,0.36,1), border-color 0.2s, box-shadow 0.2s;
+}
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+
+/* Place/person card lift */
+.place-card, .person-card {
+  transition: transform 0.2s cubic-bezier(0.22,1,0.36,1), border-color 0.2s, box-shadow 0.2s;
+}
+.place-card:hover, .person-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+}
+
+/* Suggest item */
+.suggest-item {
+  transition: transform 0.18s cubic-bezier(0.22,1,0.36,1), border-color 0.18s, background 0.18s;
+}
+.suggest-item:hover {
+  transform: translateX(4px);
+  border-color: rgba(255,255,255,0.25);
+}
+
+/* Modal entrance */
+@keyframes modalIn {
+  from { opacity:0; transform: scale(0.93) translateY(16px); }
+  to   { opacity:1; transform: scale(1) translateY(0); }
+}
+.modal {
+  animation: modalIn 0.28s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+/* Modal overlay fade */
+.modal-overlay:not(.hidden) {
+  animation: fadeIn 0.2s ease both;
+}
+
+/* Cat pill select bounce */
+.cat-pill {
+  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.18s cubic-bezier(0.34,1.56,0.64,1);
+}
+.cat-pill:active { transform: scale(0.9); }
+.cat-pill.selected { animation: pillPop 0.25s cubic-bezier(0.34,1.56,0.64,1); }
+@keyframes pillPop {
+  0%  { transform: scale(1); }
+  50% { transform: scale(1.12); }
+  100%{ transform: scale(1); }
+}
+
+/* XP fill animation already has transition; add a glow pulse on XP gain */
+@keyframes xpGlow {
+  0%,100% { box-shadow: 0 0 0 rgba(255,255,255,0); }
+  50%     { box-shadow: 0 0 8px rgba(255,255,255,0.6); }
+}
+.xp-fill.gaining { animation: xpGlow 0.5s ease; }
+
+/* Chip hover */
+.chip {
+  transition: border-color 0.15s, color 0.15s, transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
+}
+.chip:hover { transform: translateY(-1px); }
+.chip:active { transform: scale(0.95); }
+
+/* Topbar title transition when switching panels */
+#topbar-title {
+  transition: opacity 0.15s ease;
+}
+
+/* Alfred ask button throb */
+.alfred-nav-btn {
+  transition: background 0.2s, border-color 0.2s, transform 0.2s cubic-bezier(0.34,1.56,0.64,1);
+}
+.alfred-nav-btn:hover { transform: scale(1.02); }
+.alfred-nav-btn:active { transform: scale(0.97); }
+
+/* Scroll fade-in for content area — handled via JS IntersectionObserver below */
+.fade-in-item {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.22,1,0.36,1);
+}
+.fade-in-item.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Auth screen - typewriter cursor blink */
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* Page load — app screen slides in from right */
+@keyframes appEnter {
+  from { opacity:0; transform:translateX(20px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+#app-screen.active {
+  animation: appEnter 0.4s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+/* Logout fade */
+@keyframes appExit {
+  from { opacity:1; }
+  to   { opacity:0; }
+}
+
+/* XP popup */
+.xp-popup {
+  transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+/* Level up overlay */
+.levelup-overlay {
+  transition: opacity 0.3s ease;
+}
+/* ── CINEMATIC DASHBOARD ─────────────────────────────── */
+
+/* Ticker tape scroll */
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* Panel transition — shutter wipe from corners */
+@keyframes shutter-in {
+  0%   { clip-path: polygon(50% 50%, 50% 50%, 50% 50%, 50% 50%); opacity: 0; }
+  60%  { clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%); opacity: 1; }
+  100% { clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%); opacity: 1; }
+}
+@keyframes shutter-out {
+  0%   { clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%); opacity: 1; }
+  100% { clip-path: polygon(50% 50%, 50% 50%, 50% 50%, 50% 50%); opacity: 0; }
+}
+
+/* Greeting word typewriter reveal */
+@keyframes word-in {
+  0%   { transform: translateY(60px) skewX(-8deg); opacity: 0; filter: blur(6px); }
+  70%  { transform: translateY(-4px) skewX(1deg); opacity: 1; filter: blur(0); }
+  100% { transform: translateY(0) skewX(0); opacity: 1; filter: blur(0); }
+}
+
+/* Tiles */
+.dash-tile {
+  position: relative;
+  border-radius: 16px;
+  padding: 22px;
+  cursor: pointer;
+  overflow: hidden;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s;
+  transform-style: preserve-3d;
+}
+.dash-tile:hover {
+  transform: translateY(-4px) scale(1.015);
+  border-color: rgba(255,255,255,0.18);
+}
+.dash-tile:active { transform: scale(0.97); }
+
+/* Rotating ring behind tile */
+.tile-bg-ring {
+  position: absolute;
+  inset: -40%;
+  border-radius: 50%;
+  border: 60px solid rgba(255,255,255,0.015);
+  animation: ring-spin 18s linear infinite;
+  pointer-events: none;
+}
+@keyframes ring-spin { to { transform: rotate(360deg); } }
+
+.tile-inner { position: relative; z-index: 1; }
+.tile-icon {
+  font-size: 18px;
+  margin-bottom: 10px;
+  display: inline-block;
+  animation: tile-icon-float 4s ease-in-out infinite;
+}
+@keyframes tile-icon-float {
+  0%,100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+@keyframes tile-icon-pulse {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.6; transform: scale(0.88); }
+}
+.tile-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 44px;
+  font-weight: 500;
+  color: #fff;
+  line-height: 1;
+  letter-spacing: -2px;
+  margin-bottom: 4px;
+}
+.tile-label { font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 2px; }
+.tile-sub   { font-size: 12px; color: rgba(255,255,255,0.5); }
+.tile-arc-wrap {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  width: 52px;
+  height: 52px;
+  opacity: 0.8;
+}
+.tile-arc-svg { width: 100%; height: 100%; }
+
+/* Focus cards */
+.dash-focus-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 14px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
+  position: relative;
+  overflow: hidden;
+}
+.dash-focus-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(from 0deg, transparent 0deg, rgba(255,255,255,0.04) 60deg, transparent 120deg);
+  animation: focus-card-glow 6s linear infinite;
+  pointer-events: none;
+}
+@keyframes focus-card-glow { to { transform: rotate(360deg); } }
+.dash-focus-card:hover {
+  border-color: rgba(255,255,255,0.2);
+  transform: translateY(-2px);
+}
+
+/* Dash chips */
+.dash-chip {
+  display: inline-block;
+  padding: 4px 11px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.15);
+  font-size: 11px;
+  color: rgba(255,255,255,0.55);
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+}
+.dash-chip:hover { border-color: rgba(255,255,255,0.5); color: #fff; background: rgba(255,255,255,0.06); }
+
+/* Ticker item */
+.ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 32px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.35);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.3px;
+}
+.ticker-sep { color: rgba(255,255,255,0.12); font-size: 18px; line-height: 1; }
+
+/* Panel switching — liquid morph */
+@keyframes panel-liquid-in {
+  0%   { opacity: 0; transform: scale(0.96) translateY(12px); filter: blur(4px); }
+  60%  { opacity: 1; transform: scale(1.006) translateY(-2px); filter: blur(0); }
+  100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+}
+.panel.active { animation: panel-liquid-in 0.45s cubic-bezier(0.22,1,0.36,1) both; }
+
+/* Orb dots animation */
+@keyframes orb-orbit1 { to { transform: rotate(360deg); transform-origin: 200px 90px; } }
+
+/* Particle burst when completing tasks/assignments */
+@keyframes particle-burst {
+  0%   { opacity: 1; transform: translate(0,0) scale(1); }
+  100% { opacity: 0; transform: translate(var(--dx),var(--dy)) scale(0); }
+}
+.burst-particle {
+  position: fixed;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #fff;
+  pointer-events: none;
+  z-index: 9999;
+  animation: particle-burst 0.7s ease-out forwards;
+}
+#upload-zone.drag-over{border-color:var(--text);background:var(--surface3)}
+.file-item{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:7px}
+.file-icon{width:30px;height:30px;border-radius:7px;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.file-name{font-size:13px;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-size{font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+.file-remove{margin-left:auto;font-size:12px;color:var(--text3);cursor:pointer;padding:3px 7px;border-radius:5px;transition:all .15s;flex-shrink:0}
+.file-remove:hover{color:var(--red);background:var(--red-bg)}
+.subject-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:2px 9px;border-radius:20px}
+.asgn-item{display:flex;align-items:flex-start;gap:11px;padding:10px 0;border-bottom:1px solid var(--border)}
+.asgn-item:last-child{border-bottom:none}
+.asgn-check{width:18px;height:18px;border-radius:4px;border:1.5px solid var(--text3);flex-shrink:0;margin-top:2px;cursor:pointer;transition:all .2s;position:relative}
+.asgn-check:hover{border-color:var(--green)}
+.asgn-check.done{background:var(--green);border-color:var(--green)}
+.asgn-check.done::after{content:'';position:absolute;left:4px;top:1px;width:5px;height:9px;border:2px solid #0f0e0c;border-top:none;border-left:none;transform:rotate(45deg)}
+.asgn-due-badge{font-size:11px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:4px}
+.due-overdue{background:var(--red-bg);color:var(--red)}
+.due-soon{background:var(--yellow-bg);color:var(--yellow)}
+.due-normal{background:var(--surface3);color:var(--text2)}
+.cat-pill{padding:5px 12px;border-radius:20px;border:1px solid var(--border);font-size:12px;color:var(--text2);cursor:pointer;transition:all .15s}
+.cat-pill.selected{border-color:rgba(255,255,255,0.4);color:var(--text);background:rgba(255,255,255,0.07)}
+.study-subject-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.study-subject-row:last-child{border-bottom:none}
+.subj-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+#timer-display{transition:color .3s}
+#timer-display.running{color:var(--green)}
+#timer-display.ended{color:var(--red)}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-screen" class="screen active">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="mark">A</div>
+      <h1>Alfred</h1>
+      <p>Your intelligent life operating system</p>
+    </div>
+    <div class="field-group">
+      <label>What should Alfred call you?</label>
+      <input type="text" id="quick-name" placeholder="Your name" onkeydown="if(event.key==='Enter')quickEnter()">
+    </div>
+    <button class="btn-auth" onclick="quickEnter()">Enter Alfred →</button>
+    <div class="auth-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen" class="screen">
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-mark">A</div>
+      <div class="sidebar-brand">Alfred <span>Life OS</span></div>
+    </div>
+    <!-- XP BAR -->
+    <div class="xp-bar-wrap">
+      <div class="xp-header">
+        <div class="xp-level-badge">
+          <span class="xp-level-num" id="xp-level-badge">LV 1</span>
+          <span class="xp-level-name" id="xp-level-name">Initiate</span>
+        </div>
+        <span class="xp-pts" id="xp-pts-label">0 / 100 XP</span>
+      </div>
+      <div class="xp-track"><div class="xp-fill" id="xp-fill" style="width:0%"></div></div>
+      <div class="xp-streak" id="xp-streak-row">
+        <span id="xp-streak-icon">○</span><span id="xp-streak-label">0 day streak</span>
+      </div>
+    </div>
+
+    <div class="alfred-nav-btn" onclick="showPanel('alfred','Alfred')">
+      <span class="alfred-pulse"></span>
+      <span class="alfred-nav-text">Ask Alfred</span>
+    </div>
+    <div class="nav-section-label" style="margin-top:4px">Main</div>
+    <div class="nav-item active" id="nav-dashboard" onclick="showPanel('dashboard','Dashboard')"><span class="nav-icon">⌂</span>Dashboard</div>
+    <div class="nav-item" id="nav-tasks" onclick="showPanel('tasks','Tasks')"><span class="nav-icon">✓</span>Tasks<span class="nav-badge" id="badge-tasks">3</span></div>
+    <div class="nav-item" id="nav-study" onclick="showPanel('study','Study Planner')"><span class="nav-icon">◧</span>Study Planner<span class="nav-badge" id="badge-study">0</span></div>
+    <div class="nav-section-label">Databases</div>
+    <div class="nav-item" id="nav-people" onclick="showPanel('people','People')"><span class="nav-icon">◯</span>People</div>
+    <div class="nav-item" id="nav-places" onclick="showPanel('places','Places & Food')"><span class="nav-icon">◈</span>Places & Food</div>
+    <div class="nav-item" id="nav-finance" onclick="showPanel('finance','Finance')"><span class="nav-icon">◎</span>Finance</div>
+    <div class="sidebar-footer">
+      <div class="user-avatar" id="user-avatar">?</div>
+      <div class="user-info">
+        <div class="user-name" id="user-display-name">—</div>
+        <div id="sync-status" style="margin-top:2px"></div>
+      </div>
+      <div class="logout-btn" onclick="doLogout()">Sign out</div>
+    </div>
+  </nav>
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <h2 id="topbar-title">Dashboard</h2>
+        <div class="topbar-sub" id="topbar-date">—</div>
+      </div>
+      <div class="topbar-right">
+        <button class="btn" onclick="openAddTask()">+ Quick add task</button>
+        <button class="btn btn-gold" onclick="showPanel('alfred','Alfred')">◆ Ask Alfred</button>
+      </div>
+    </div>
+    <div class="content">
+
+      <!-- DASHBOARD — CINEMATIC MOTION -->
+      <div class="panel active" id="panel-dashboard" style="padding:0;overflow:hidden;position:relative;height:calc(100vh - 70px)">
+
+        <!-- Ambient canvas background -->
+        <canvas id="dash-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:0.55"></canvas>
+
+        <!-- Scrollable content over canvas -->
+        <div id="dash-scroll" style="position:relative;z-index:1;height:100%;overflow-y:auto;padding:32px 32px 48px">
+
+          <!-- HERO: greeting + orbital rings -->
+          <div id="dash-hero" style="position:relative;margin-bottom:40px;min-height:160px;display:flex;align-items:center">
+            <!-- Orbital SVG -->
+            <svg id="hero-orb" viewBox="0 0 340 180" xmlns="http://www.w3.org/2000/svg" style="position:absolute;right:-20px;top:-20px;width:340px;height:180px;opacity:0.18;pointer-events:none">
+              <ellipse cx="200" cy="90" rx="130" ry="55" fill="none" stroke="white" stroke-width="0.7"/>
+              <ellipse cx="200" cy="90" rx="95" ry="40" fill="none" stroke="white" stroke-width="0.5" transform="rotate(25 200 90)"/>
+              <ellipse cx="200" cy="90" rx="60" ry="24" fill="none" stroke="white" stroke-width="0.4" transform="rotate(-15 200 90)"/>
+              <circle id="orb-dot1" cx="330" cy="90" r="3.5" fill="white" opacity="0.9"/>
+              <circle id="orb-dot2" cx="105" cy="90" r="2.5" fill="white" opacity="0.6"/>
+              <circle id="orb-dot3" cx="195" cy="50" r="2" fill="white" opacity="0.5"/>
+            </svg>
+            <div style="position:relative;z-index:2">
+              <div id="dash-greeting-time" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.35);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px"></div>
+              <h1 id="dash-greeting-main" style="font-family:'Space Grotesk',sans-serif;font-size:42px;font-weight:600;letter-spacing:-1.5px;line-height:1.1;color:#fff;overflow:hidden">
+                <span id="dash-greeting-word" style="display:inline-block"></span>
+              </h1>
+              <p id="dash-greeting-sub" style="font-size:13px;color:rgba(255,255,255,0.4);margin-top:8px;letter-spacing:0.2px"></p>
+            </div>
+          </div>
+
+          <!-- TICKER TAPE — scrolling live info bar -->
+          <div style="margin-bottom:28px;overflow:hidden;border-top:1px solid rgba(255,255,255,0.07);border-bottom:1px solid rgba(255,255,255,0.07);padding:9px 0;position:relative">
+            <div id="dash-ticker" style="display:flex;gap:0;white-space:nowrap;animation:ticker-scroll 28s linear infinite;will-change:transform"></div>
+          </div>
+
+          <!-- BIG CARDS ROW — 3 horizontal tiles that breathe -->
+          <div id="dash-tiles" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:24px">
+
+            <!-- TILE: Tasks -->
+            <div class="dash-tile" id="tile-tasks" onclick="showPanel('tasks','Tasks')" style="--tile-hue:142">
+              <div class="tile-bg-ring"></div>
+              <div class="tile-inner">
+                <div class="tile-icon">✓</div>
+                <div class="tile-num" id="tile-tasks-num">0</div>
+                <div class="tile-label">tasks today</div>
+                <div class="tile-sub" id="tile-tasks-sub">loading…</div>
+                <div class="tile-arc-wrap"><svg viewBox="0 0 80 80" class="tile-arc-svg"><circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="4"/><circle id="arc-tasks" cx="40" cy="40" r="34" fill="none" stroke="rgba(74,222,128,0.7)" stroke-width="4" stroke-linecap="round" stroke-dasharray="213" stroke-dashoffset="213" transform="rotate(-90 40 40)" style="transition:stroke-dashoffset 1.2s cubic-bezier(0.34,1.56,0.64,1)"/></svg></div>
+              </div>
+            </div>
+
+            <!-- TILE: Study -->
+            <div class="dash-tile" id="tile-study" onclick="showPanel('study','Study Planner')" style="--tile-hue:214">
+              <div class="tile-bg-ring"></div>
+              <div class="tile-inner">
+                <div class="tile-icon">◧</div>
+                <div class="tile-num" id="tile-study-num">0</div>
+                <div class="tile-label">assignments due</div>
+                <div class="tile-sub" id="tile-study-sub">this week</div>
+                <div class="tile-arc-wrap"><svg viewBox="0 0 80 80" class="tile-arc-svg"><circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="4"/><circle id="arc-study" cx="40" cy="40" r="34" fill="none" stroke="rgba(96,165,250,0.7)" stroke-width="4" stroke-linecap="round" stroke-dasharray="213" stroke-dashoffset="213" transform="rotate(-90 40 40)" style="transition:stroke-dashoffset 1.2s cubic-bezier(0.34,1.56,0.64,1)"/></svg></div>
+              </div>
+            </div>
+
+            <!-- TILE: Alfred -->
+            <div class="dash-tile" id="tile-alfred" onclick="showPanel('alfred','Alfred')" style="--tile-hue:0;cursor:pointer">
+              <div class="tile-bg-ring"></div>
+              <div class="tile-inner">
+                <div class="tile-icon" style="animation:tile-icon-pulse 2s ease-in-out infinite">◆</div>
+                <div class="tile-num" style="font-size:22px;margin-bottom:4px">Alfred</div>
+                <div class="tile-label">ask me anything</div>
+                <div class="tile-sub">always ready</div>
+                <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">
+                  <span class="dash-chip" onclick="event.stopPropagation();quickDashChip('What should I focus on today?')">Today's plan</span>
+                  <span class="dash-chip" onclick="event.stopPropagation();quickDashChip('What assignments are due soon?')">Due soon</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- FOCUS STRIP — top task + next assignment side by side -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px" id="dash-focus-strip">
+
+            <div class="dash-focus-card" onclick="showPanel('tasks','Tasks')">
+              <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.3);margin-bottom:10px;font-family:'JetBrains Mono',monospace">Next task</div>
+              <div id="focus-task-title" style="font-size:16px;font-weight:500;color:#fff;line-height:1.4;margin-bottom:8px">—</div>
+              <div id="focus-task-meta" style="font-size:11px;color:rgba(255,255,255,0.35)"></div>
+            </div>
+
+            <div class="dash-focus-card" onclick="showPanel('study','Study Planner')">
+              <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.3);margin-bottom:10px;font-family:'JetBrains Mono',monospace">Next due</div>
+              <div id="focus-study-title" style="font-size:16px;font-weight:500;color:#fff;line-height:1.4;margin-bottom:8px">—</div>
+              <div id="focus-study-meta" style="font-size:11px;color:rgba(255,255,255,0.35)"></div>
+            </div>
+
+          </div>
+
+          <!-- ALFRED MINI INPUT -->
+          <div id="dash-alfred-bar" style="display:flex;gap:10px;align-items:center;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:12px 16px;transition:border-color .2s" onfocus="this.style.borderColor='rgba(255,255,255,0.25)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+            <span style="font-size:14px;color:rgba(255,255,255,0.4)">◆</span>
+            <input id="dash-q" placeholder="Ask Alfred anything…" style="flex:1;background:none;border:none;outline:none;font-size:14px;color:#fff;font-family:'Space Grotesk',sans-serif" onkeydown="if(event.key==='Enter')dashAsk()">
+            <button onclick="dashAsk()" style="background:#fff;color:#000;border:none;border-radius:8px;padding:7px 16px;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .2s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">Ask →</button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ALFRED -->
+      <div class="panel" id="panel-alfred">
+        <div class="chat-header">
+          <h2>◆ Alfred</h2>
+          <p>Your personal steward — remembers everything, suggests thoughtfully.</p>
+        </div>
+        <div id="api-key-banner" class="api-banner" style="display:none">
+          <div class="api-banner-text">Paste your <strong>Anthropic API key</strong> to activate Alfred's intelligence.<br><span style="font-size:11px;opacity:.7">Get it free at console.anthropic.com → API Keys. Stored only in your browser.</span></div>
+          <input type="password" id="api-key-input" placeholder="sk-ant-…" onkeydown="if(event.key==='Enter')saveApiKey()">
+          <button class="btn btn-gold" onclick="saveApiKey()" style="padding:7px 14px;font-size:13px;border-radius:6px">Activate</button>
+        </div>
+        <div class="chat-messages" id="chat-messages"></div>
+        <div class="chat-input-area">
+          <textarea class="chat-input" id="alfred-input" rows="1" placeholder="Ask Alfred anything about your life…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendToAlfred()}"></textarea>
+          <button class="chat-send" id="chat-send-btn" onclick="sendToAlfred()">Send</button>
+        </div>
+      </div>
+
+      <!-- TASKS -->
+      <div class="panel" id="panel-tasks">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <h2 style="font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:400;letter-spacing:-0.5px;color:var(--text)">Tasks</h2>
+          <button class="btn btn-gold" onclick="openAddTask()">+ New task</button>
+        </div>
+        <div class="card" style="margin-bottom:14px">
+          <div class="card-header"><span class="card-title">Today</span></div>
+          <div id="tasks-today"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Upcoming</span></div>
+          <div id="tasks-upcoming"></div>
+        </div>
+      </div>
+
+      <!-- STUDY PLANNER -->
+      <div class="panel" id="panel-study">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+          <h2 style="font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:400;letter-spacing:-0.5px;color:var(--text)">Study Planner</h2>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn" onclick="openAddSubject()">+ Subject</button>
+            <button class="btn btn-gold" onclick="openAddAssignment()">+ Assignment</button>
+          </div>
+        </div>
+
+        <!-- Study stats row -->
+        <div class="stats-row" style="grid-template-columns:repeat(4,1fr)" id="study-stats-row">
+          <div class="stat-card">
+            <div class="s-label">Due soon</div>
+            <div class="s-value" id="stat-due-soon">0</div>
+            <div class="s-sub" id="stat-due-label">assignments</div>
+          </div>
+          <div class="stat-card">
+            <div class="s-label">Subjects</div>
+            <div class="s-value" id="stat-subjects">0</div>
+            <div class="s-sub">courses tracked</div>
+          </div>
+          <div class="stat-card">
+            <div class="s-label">Study streak</div>
+            <div class="s-value" id="stat-study-streak">0</div>
+            <div class="s-sub">days in a row</div>
+          </div>
+          <div class="stat-card">
+            <div class="s-label">Completed</div>
+            <div class="s-value" id="stat-assignments-done">0</div>
+            <div class="s-sub">assignments done</div>
+          </div>
+        </div>
+
+        <div class="dash-grid">
+          <!-- Left: Assignments -->
+          <div>
+            <div class="card" id="study-assignments-card">
+              <div class="card-header">
+                <span class="card-title">Assignments</span>
+                <div style="display:flex;gap:6px">
+                  <button class="filter-btn active" onclick="filterAssignments(this,'all')">All</button>
+                  <button class="filter-btn" onclick="filterAssignments(this,'pending')">Pending</button>
+                  <button class="filter-btn" onclick="filterAssignments(this,'done')">Done</button>
+                </div>
+              </div>
+              <div id="assignments-list" style="min-height:40px"></div>
+            </div>
+
+            <!-- File upload + Alfred help -->
+            <div class="card" id="study-files-card">
+              <div class="card-header">
+                <span class="card-title">◆ Schoolwork Assistant</span>
+                <span style="font-size:11px;color:var(--text3)">Upload files · Ask Alfred</span>
+              </div>
+
+              <!-- Upload zone -->
+              <div id="upload-zone" onclick="document.getElementById('file-upload-input').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleFileDrop(event)" style="border:1.5px dashed var(--border2);border-radius:10px;padding:22px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:14px;background:var(--surface2)">
+                <div style="font-size:22px;margin-bottom:8px">📄</div>
+                <div style="font-size:13px;color:var(--text2)">Drop files here or <span style="color:#ffffff;text-decoration:underline">click to upload</span></div>
+                <div style="font-size:11px;color:var(--text3);margin-top:4px">PDF, images, Word docs, txt — Alfred will read and help</div>
+                <input type="file" id="file-upload-input" multiple accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.txt,.md,.doc,.docx" style="display:none" onchange="handleFileSelect(event)">
+              </div>
+
+              <!-- Uploaded files list -->
+              <div id="uploaded-files-list" style="margin-bottom:12px"></div>
+
+              <!-- Ask about file -->
+              <div id="file-ask-area" style="display:none">
+                <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Ask Alfred about your uploaded files:</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px" id="file-chips"></div>
+                <div style="display:flex;gap:8px">
+                  <textarea id="file-question-input" class="chat-input" rows="2" placeholder="e.g. Summarize this, explain the key concepts, make flashcards, check my essay..." style="resize:none;font-size:13px"></textarea>
+                  <button class="chat-send" onclick="askAlfredAboutFiles()" style="padding:10px 14px;font-size:13px;align-self:flex-end">Ask →</button>
+                </div>
+              </div>
+
+              <!-- Response area -->
+              <div id="file-response-area" style="display:none;margin-top:14px">
+                <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:8px;font-family:'JetBrains Mono',monospace">◆ Alfred</div>
+                <div id="file-response-content" style="font-size:13.5px;color:var(--text);line-height:1.7;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;white-space:pre-wrap"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Subjects & schedule -->
+          <div>
+            <div class="card">
+              <div class="card-header"><span class="card-title">Subjects</span></div>
+              <div id="subjects-list"></div>
+              <div id="no-subjects-msg" style="font-size:13px;color:var(--text3);padding:8px 0">No subjects yet. Add one to get started.</div>
+            </div>
+
+            <div class="card" style="margin-top:0">
+              <div class="card-header"><span class="card-title">Study Timer</span></div>
+              <div style="text-align:center;padding:10px 0">
+                <div id="timer-display" style="font-family:'JetBrains Mono',monospace;font-size:48px;color:var(--text);letter-spacing:-2px;margin-bottom:14px">25:00</div>
+                <div style="font-size:12px;color:var(--text2);margin-bottom:14px" id="timer-session-label">Pomodoro session</div>
+                <div style="display:flex;gap:8px;justify-content:center;margin-bottom:12px">
+                  <button class="btn" onclick="setTimer(25)" id="tmr-25" style="font-size:12px;padding:6px 12px">25 min</button>
+                  <button class="btn" onclick="setTimer(45)" id="tmr-45" style="font-size:12px;padding:6px 12px">45 min</button>
+                  <button class="btn" onclick="setTimer(60)" id="tmr-60" style="font-size:12px;padding:6px 12px">60 min</button>
+                </div>
+                <div style="display:flex;gap:8px;justify-content:center">
+                  <button class="btn btn-gold" onclick="toggleTimer()" id="timer-btn" style="padding:10px 24px">▶ Start</button>
+                  <button class="btn" onclick="resetTimer()" style="padding:10px 16px">Reset</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card" style="margin-top:0">
+              <div class="card-header"><span class="card-title">◆ Alfred Study Tips</span></div>
+              <div id="alfred-study-tips" style="font-size:13px;color:var(--text2);line-height:1.7">
+                <div class="suggest-item" onclick="quickStudyAsk('Give me a study schedule for my upcoming deadlines')">
+                  <div class="suggest-label">Plan</div>
+                  <div class="suggest-text">Build a study schedule around your deadlines</div>
+                </div>
+                <div class="suggest-item" onclick="quickStudyAsk('Which assignment should I prioritize today?')">
+                  <div class="suggest-label">Priority</div>
+                  <div class="suggest-text">Which assignment needs attention first today?</div>
+                </div>
+                <div class="suggest-item" onclick="quickStudyAsk('Give me study tips for memorizing effectively')">
+                  <div class="suggest-label">Technique</div>
+                  <div class="suggest-text">Get personalized study technique advice</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PEOPLE -->
+      <div class="panel" id="panel-people">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <h2 style="font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:400;letter-spacing:-0.5px;color:var(--text)">People</h2>
+          <button class="btn btn-gold" onclick="openAddPerson()">+ Add person</button>
+        </div>
+        <div class="people-grid" id="people-grid"></div>
+      </div>
+
+      <!-- PLACES -->
+      <div class="panel" id="panel-places">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <h2 style="font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:400;letter-spacing:-0.5px;color:var(--text)">Places & Food</h2>
+          <button class="btn btn-gold" onclick="openAddPlace()">+ Add place</button>
+        </div>
+        <div id="alfred-map" style="width:100%;height:340px;border-radius:var(--r);border:1px solid var(--border);margin-bottom:16px;overflow:hidden;"></div>
+        <div class="filter-row" id="filter-row"><div class="filter-btn active" onclick="filterPlaces(this,'all')">All</div></div>
+        <div class="places-grid" id="places-grid"></div>
+      </div>
+
+      <!-- FINANCE -->
+      <div class="panel" id="panel-finance">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <h2 style="font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:400;letter-spacing:-0.5px;color:var(--text)">Finance</h2>
+          <button class="btn" onclick="openAddTransaction()">+ Add transaction</button>
+        </div>
+        <div class="finance-stats">
+          <div class="fin-stat"><div class="s-label">Income (Mar)</div><div class="s-val">$6,200</div><div class="s-note up">On track</div></div>
+          <div class="fin-stat"><div class="s-label">Spent (Mar)</div><div class="s-val">$1,840</div><div class="s-note">of $3,200 budget</div></div>
+          <div class="fin-stat"><div class="s-label">Saved (Mar)</div><div class="s-val">$4,360</div><div class="s-note up">70% rate</div></div>
+          <div class="fin-stat"><div class="s-label">This week</div><div class="s-val">$184</div><div class="s-note down">72% of weekly</div></div>
+        </div>
+        <div class="bar-chart-area">
+          <div class="card-header" style="margin-bottom:16px"><span class="card-title">Spending by category</span></div>
+          <div class="bar-row"><span class="bar-label">Food</span><div class="bar-track"><div class="bar-fill" style="width:65%;background:var(--gold)"></div></div><span class="bar-amount">$480</span></div>
+          <div class="bar-row"><span class="bar-label">Transport</span><div class="bar-track"><div class="bar-fill" style="width:22%;background:var(--green)"></div></div><span class="bar-amount">$160</span></div>
+          <div class="bar-row"><span class="bar-label">Subscriptions</span><div class="bar-track"><div class="bar-fill" style="width:18%;background:var(--blue)"></div></div><span class="bar-amount">$130</span></div>
+          <div class="bar-row"><span class="bar-label">Entertainment</span><div class="bar-track"><div class="bar-fill" style="width:15%;background:var(--red)"></div></div><span class="bar-amount">$115</span></div>
+          <div class="bar-row"><span class="bar-label">Health</span><div class="bar-track"><div class="bar-fill" style="width:12%;background:var(--blue)"></div></div><span class="bar-amount">$90</span></div>
+        </div>
+        <div class="tx-list">
+          <div class="card-header" style="margin-bottom:4px"><span class="card-title">Recent transactions</span></div>
+          <div id="tx-list-items"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add Person (its own isolated overlay) -->
+<div class="modal-overlay hidden" id="overlay-person" onclick="if(event.target===this)closeModal('person')">
+  <div class="modal">
+    <h3>Add person</h3>
+    <div class="modal-sub">Store what matters about someone you care about.</div>
+    <div class="field-group"><label>Name *</label><input type="text" id="p-name" placeholder="e.g. Jamie Lee"></div>
+    <div class="field-group"><label>Relationship</label><input type="text" id="p-rel" placeholder="e.g. Best friend, colleague, family"></div>
+    <div class="field-group"><label>Birthday</label><input type="text" id="p-bday" placeholder="e.g. Apr 5"></div>
+    <div class="field-group"><label>Favorite food</label><input type="text" id="p-food" placeholder="e.g. Sushi, spicy food"></div>
+    <div class="field-group"><label>Coffee order</label><input type="text" id="p-coffee" placeholder="e.g. Oat milk latte, no sugar"></div>
+    <div class="field-group"><label>Notes / memories</label><input type="text" id="p-notes" placeholder="e.g. Met in Tokyo 2019"></div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeModal('person')">Cancel</button>
+      <button class="btn btn-gold" onclick="savePerson()">Save person</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add Place -->
+<div class="modal-overlay hidden" id="overlay-place" onclick="if(event.target===this)closeModal('place')">
+  <div class="modal">
+    <h3>Add place</h3>
+    <div class="modal-sub">Pin a restaurant, cafe, or anywhere you love.</div>
+    <div class="field-group"><label>Name *</label><input type="text" id="pl-name" placeholder="e.g. 師大分部, Ichiran Ramen"></div>
+    <div class="field-group"><label>Type / category</label><input type="text" id="pl-type" placeholder="e.g. Ramen, Coffee, Jazz, Bakery"></div>
+    <div class="field-group">
+      <label>Location * <span id="geocode-status" style="font-size:11px;margin-left:6px;color:var(--text3)"></span></label>
+      <!-- GPS button -->
+      <button id="btn-gps" onclick="useGPS()" style="width:100%;margin-bottom:8px;padding:10px 14px;border-radius:8px;border:1px dashed var(--border2);background:var(--surface2);color:var(--text);font-family:inherit;font-size:13.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s">
+        <span id="gps-icon" style="font-size:16px">📍</span>
+        <span id="gps-label">Use my current GPS location</span>
+      </button>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+        <span style="font-size:11px;color:var(--text3)">or type address</span>
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="pl-addr" placeholder="e.g. 泰昌二街87號, Tingzhou Rd, Taipei" oninput="clearGeocode()" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();geocodeAndPreview()}">
+        <button class="btn" onclick="geocodeAndPreview()" style="white-space:nowrap;flex-shrink:0;padding:0 14px">Search</button>
+      </div>
+      <div id="geocode-result" style="font-size:12px;margin-top:7px;padding:7px 10px;border-radius:6px;display:none;line-height:1.5"></div>
+      <!-- Mini preview map inside modal -->
+      <div id="modal-map-preview" style="width:100%;height:200px;border-radius:8px;border:1px solid var(--border2);margin-top:8px;display:none;overflow:hidden;position:relative">
+        <div id="modal-map" style="width:100%;height:100%"></div>
+        <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);font-size:11px;color:#e8e2d8;background:rgba(15,14,12,.8);padding:3px 10px;border-radius:20px;white-space:nowrap;pointer-events:none;z-index:10">拖移圖釘微調位置</div>
+      </div>
+    </div>
+    <div class="field-group"><label>Rating (1-5)</label><input type="number" id="pl-rating" min="1" max="5" placeholder="5"></div>
+    <div class="field-group"><label>Notes</label><input type="text" id="pl-notes" placeholder="e.g. Best tonkotsu, go on weekdays"></div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeModal('place')">Cancel</button>
+      <button class="btn btn-gold" id="btn-save-place" onclick="savePlace()">Save place</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add Task -->
+<div class="modal-overlay hidden" id="overlay-task" onclick="if(event.target===this)closeModal('task')">
+  <div class="modal">
+    <h3>New task</h3>
+    <div class="modal-sub">Add something to your list.</div>
+    <div class="field-group"><label>Task *</label><input type="text" id="t-title" placeholder="e.g. Call dentist, Buy groceries"></div>
+    <div class="field-group">
+      <label>Category</label>
+      <div class="cat-pills" id="cat-pills">
+        <div class="cat-pill selected" data-cat="" onclick="selectCat(this,'')">None</div>
+        <div class="cat-pill" data-cat="Work" onclick="selectCat(this,'Work')">Work</div>
+        <div class="cat-pill" data-cat="Health" onclick="selectCat(this,'Health')">Health</div>
+        <div class="cat-pill" data-cat="Personal" onclick="selectCat(this,'Personal')">Personal</div>
+        <div class="cat-pill" data-cat="Learning" onclick="selectCat(this,'Learning')">Learning</div>
+        <div class="cat-pill" data-cat="Finance" onclick="selectCat(this,'Finance')">Finance</div>
+        <div class="cat-pill" data-cat="Social" onclick="selectCat(this,'Social')">Social</div>
+        <div class="cat-pill" data-cat="Errand" onclick="selectCat(this,'Errand')">Errand</div>
+      </div>
+    </div>
+    <div class="field-group">
+      <label>Priority</label>
+      <div class="cat-pills" id="priority-pills">
+        <div class="cat-pill selected" data-pri="medium" onclick="selectPri(this,'medium')">Medium</div>
+        <div class="cat-pill" data-pri="high" onclick="selectPri(this,'high')">High</div>
+        <div class="cat-pill" data-pri="low" onclick="selectPri(this,'low')">Low</div>
+      </div>
+    </div>
+    <div class="field-group"><label>Due date</label><input type="text" id="t-due" placeholder="Leave blank for today, or e.g. Mar 20"></div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeModal('task')">Cancel</button>
+      <button class="btn btn-gold" onclick="saveTask()">Save task</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add Transaction -->
+<div class="modal-overlay hidden" id="overlay-transaction" onclick="if(event.target===this)closeModal('transaction')">
+  <div class="modal">
+    <h3>Add transaction</h3>
+    <div class="modal-sub">Track income or an expense.</div>
+    <div class="field-group"><label>Description *</label><input type="text" id="tx-desc" placeholder="e.g. Lunch, Salary"></div>
+    <div class="field-group"><label>Amount ($) *</label><input type="number" id="tx-amount" placeholder="0.00"></div>
+    <div class="field-group"><label>Type</label>
+      <select id="tx-type">
+        <option value="expense">Expense</option>
+        <option value="income">Income</option>
+      </select>
+    </div>
+    <div class="field-group"><label>Category</label><input type="text" id="tx-cat" placeholder="e.g. Food, Transport, Salary"></div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeModal('transaction')">Cancel</button>
+      <button class="btn btn-gold" onclick="saveTransaction()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add Subject -->
+<div class="modal-overlay hidden" id="overlay-subject" onclick="if(event.target===this)closeModal('subject')">
+  <div class="modal">
+    <h3>Add Subject</h3>
+    <div class="modal-sub">Track a course or topic you're studying.</div>
+    <div class="field-group"><label>Subject name *</label><input type="text" id="subj-name" placeholder="e.g. Calculus, English Lit, Biology"></div>
+    <div class="field-group"><label>Teacher / Professor</label><input type="text" id="subj-teacher" placeholder="e.g. Prof. Wang"></div>
+    <div class="field-group"><label>Color</label>
+      <div style="display:flex;gap:8px;margin-top:4px" id="subj-color-pills">
+        <div class="cat-pill selected" data-color="blue" onclick="selectSubjColor(this,'blue')" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue)">Blue</div>
+        <div class="cat-pill" data-color="green" onclick="selectSubjColor(this,'green')" style="background:var(--green-bg);color:var(--green)">Green</div>
+        <div class="cat-pill" data-color="red" onclick="selectSubjColor(this,'red')" style="background:var(--red-bg);color:var(--red)">Red</div>
+        <div class="cat-pill" data-color="yellow" onclick="selectSubjColor(this,'yellow')" style="background:var(--yellow-bg);color:var(--yellow)">Yellow</div>
+        <div class="cat-pill" data-color="white" onclick="selectSubjColor(this,'white')" style="background:var(--surface3);color:var(--text)">White</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeModal('subject')">Cancel</button>
+      <button class="btn btn-gold" onclick="saveSubject()">Save subject</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add Assignment -->
+<div class="modal-overlay hidden" id="overlay-assignment" onclick="if(event.target===this)closeModal('assignment')">
+  <div class="modal">
+    <h3>New Assignment</h3>
+    <div class="modal-sub">Track a piece of schoolwork or exam.</div>
+    <div class="field-group"><label>Title *</label><input type="text" id="asgn-title" placeholder="e.g. Essay on Romeo & Juliet, Chapter 5 Quiz"></div>
+    <div class="field-group"><label>Subject</label>
+      <select id="asgn-subject" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--rs);padding:11px 14px;font-size:14px;color:var(--text);outline:none">
+        <option value="">— None —</option>
+      </select>
+    </div>
+    <div class="field-group"><label>Type</label>
+      <div class="cat-pills" id="asgn-type-pills">
+        <div class="cat-pill selected" data-type="assignment" onclick="selectAsgnType(this,'assignment')">Assignment</div>
+        <div class="cat-pill" data-type="exam" onclick="selectAsgnType(this,'exam')">Exam</div>
+        <div class="cat-pill" data-type="project" onclick="selectAsgnType(this,'project')">Project</div>
+        <div class="cat-pill" data-type="reading" onclick="selectAsgnType(this,'reading')">Reading</div>
+        <div class="cat-pill" data-type="quiz" onclick="selectAsgnType(this,'quiz')">Quiz</div>
+      </div>
+    </div>
+    <div class="field-group"><label>Due date *</label><input type="date" id="asgn-due"></div>
+    <div class="field-group"><label>Notes</label><input type="text" id="asgn-notes" placeholder="e.g. 1500 words, chapters 3-5"></div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeModal('assignment')">Cancel</button>
+      <button class="btn btn-gold" onclick="saveAssignment()">Save assignment</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Supabase Cloud Sync Setup -->
+<div class="modal-overlay hidden" id="overlay-supa" onclick="if(event.target===this)closeModal('supa')">
+  <div class="modal" style="width:500px">
+    <h3>☁ 雲端同步設定</h3>
+    <div class="modal-sub">連接 Supabase 後，你的資料會自動在所有裝置上同步。</div>
+
+    <!-- Step guide -->
+    <div style="background:var(--surface2);border-radius:10px;padding:16px;margin-bottom:20px;font-size:13px;line-height:1.8;color:var(--text2)">
+      <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin-bottom:10px;font-family:'JetBrains Mono',monospace">設定步驟</div>
+      <div><span style="color:var(--text)">1.</span> 去 <a href="https://supabase.com" target="_blank" style="color:var(--blue)">supabase.com</a> 免費註冊 → 建立新 Project</div>
+      <div><span style="color:var(--text)">2.</span> 進入 Project → <strong style="color:var(--text)">Settings → API</strong></div>
+      <div><span style="color:var(--text)">3.</span> 複製 <strong style="color:var(--text)">Project URL</strong> 和 <strong style="color:var(--text)">anon public key</strong></div>
+      <div><span style="color:var(--text)">4.</span> 進入 <strong style="color:var(--text)">SQL Editor</strong>，執行以下指令建表：</div>
+      <pre style="background:var(--surface3);border-radius:8px;padding:12px;font-size:11px;color:var(--green);margin-top:8px;overflow-x:auto;white-space:pre-wrap;font-family:'JetBrains Mono',monospace">create table alfred_store (
+  user_id text primary key,
+  data jsonb not null,
+  updated_at timestamptz default now()
+);
+alter table alfred_store enable row level security;
+create policy "open" on alfred_store
+  for all using (true) with check (true);</pre>
+    </div>
+
+    <div class="field-group">
+      <label>Project URL</label>
+      <input type="text" id="supa-url-input" placeholder="https://xxxxxxxxxxxx.supabase.co" style="font-family:'JetBrains Mono',monospace;font-size:13px">
+    </div>
+    <div class="field-group">
+      <label>Anon Public Key</label>
+      <input type="password" id="supa-anon-input" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="font-family:'JetBrains Mono',monospace;font-size:12px">
+    </div>
+
+    <div id="supa-test-result" style="font-size:12px;min-height:18px;margin-bottom:8px;font-family:'JetBrains Mono',monospace"></div>
+
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="clearSupaConfig()">清除設定</button>
+      <button class="btn" onclick="testSupaConnection()" style="margin-right:auto">測試連線</button>
+      <button class="btn btn-cancel" onclick="closeModal('supa')">取消</button>
+      <button class="btn btn-gold" onclick="saveSupaConfig()">儲存並同步</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="xp-popup" id="xp-popup"></div>
+<div class="levelup-overlay" id="levelup-overlay" onclick="closeLevelUp()">
+  <div class="scan-line"></div>
+  <div class="levelup-box">
+    <div class="levelup-label">Level up</div>
+    <div class="levelup-num" id="lu-num">2</div>
+    <div class="levelup-name" id="lu-name">Apprentice</div>
+    <div class="levelup-desc" id="lu-desc">You're building momentum.</div>
+    <button class="btn btn-gold" onclick="closeLevelUp()" style="width:100%;justify-content:center;padding:12px">Continue</button>
+  </div>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────
+const STORE_KEY='alfred_data_v3',SESSION_KEY='alfred_session',USERS_KEY='alfred_users',API_KEY_STORE='alfred_apikey';
+let currentUser=null,store=null;
+
+// ── SUPABASE CONFIG ───────────────────────────────────────
+// ✏️  PASTE YOUR SUPABASE CREDENTIALS HERE:
+const SUPABASE_URL  = 'https://ivtvstnvoikytyfnpbmm.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml2dHZzdG52b2lreXR5Zm5wYm1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3MjgyMzcsImV4cCI6MjA4OTMwNDIzN30.LZv0PwM02ybdcIOZ1bws0FYTB6NL7ksP0sAZWSfEOWI';
+
+const SUPA_URL_KEY  = 'alfred_supa_url';
+const SUPA_ANON_KEY = 'alfred_supa_anon';
+
+function getSupaConfig(){
+  // Hardcoded values take priority over anything stored in the browser
+  return {
+    url:  SUPABASE_URL  || localStorage.getItem(SUPA_URL_KEY)  || '',
+    anon: SUPABASE_ANON || localStorage.getItem(SUPA_ANON_KEY) || ''
+  };
+}
+function supaConfigured(){
+  const c=getSupaConfig();
+  return c.url.startsWith('https://') && c.anon.length > 20;
+}
+
+// ── SUPABASE API HELPERS ──────────────────────────────────
+async function supaFetch(path, method='GET', body=null){
+  const {url,anon}=getSupaConfig();
+  const opts={
+    method,
+    headers:{
+      'apikey': anon,
+      'Authorization': 'Bearer '+anon,
+      'Content-Type': 'application/json',
+      'Prefer': method==='POST'?'resolution=merge-duplicates':''
+    }
+  };
+  if(body) opts.body=JSON.stringify(body);
+  const res=await fetch(url+'/rest/v1'+path, opts);
+  if(!res.ok){ const e=await res.text(); throw new Error(e); }
+  const text=await res.text();
+  return text?JSON.parse(text):null;
+}
+
+async function supaLoad(userId){
+  try{
+    const rows=await supaFetch(`/alfred_store?user_id=eq.${encodeURIComponent(userId)}&select=data`);
+    if(rows&&rows.length>0) return rows[0].data;
+    return null;
+  }catch(e){ console.warn('Supabase load failed:',e); return null; }
+}
+
+async function supaSave(userId, data){
+  try{
+    await supaFetch('/alfred_store', 'POST', {
+      user_id: userId,
+      data: data,
+      updated_at: new Date().toISOString()
+    });
+    return true;
+  }catch(e){ console.warn('Supabase save failed:',e); return false; }
+}
+
+// ── STORE: local-first + background cloud sync ────────────
+function defaultStore(){
+  return {
+    people:[
+      {id:1,name:'Sarah Chen',rel:'Best friend · NYC',bday:'Mar 19',food:'Ramen (tonkotsu)',coffee:'Oat milk latte, no sugar',lastMet:'Feb 28 · MoMA',notes:'Backpacked Japan 2022',alfredNote:"Book Ichiran Ramen for her birthday — she'd love it.",initials:'SC',color:'gold'},
+      {id:2,name:'Marcus Kim',rel:'College friend · San Francisco',bday:'July 4',food:'Korean BBQ, tacos',coffee:'Black, no frills',lastMet:'Feb 27 · Coffee catch-up',notes:'Road trip to Big Sur',alfredNote:'18 days since you connected — a quick message might mean a lot.',initials:'MK',color:'blue'}
+    ],
+    places:[
+      {id:1,name:'Ichiran Ramen',type:'ramen',city:'New York',addr:'132 W 49th St, Midtown',rating:5,notes:'Solo booths, perfect tonkotsu. Sarah loves it.',emoji:'🍜',lat:40.7580,lng:-73.9855},
+      {id:2,name:'Blue Bottle Coffee',type:'coffee',city:'New York',addr:'450 W 15th St, Chelsea',rating:4,notes:'Best pour-over. Good for solo work.',emoji:'☕',lat:40.7428,lng:-74.0048},
+      {id:3,name:'Smalls Jazz Club',type:'jazz',city:'New York',addr:'183 W 10th St, West Village',rating:5,notes:'Late-night secret. Cash only. Marcus loves this.',emoji:'🎷',lat:40.7333,lng:-74.0027},
+      {id:4,name:'Levain Bakery',type:'bakery',city:'New York',addr:'167 W 74th St, Upper West',rating:4,notes:'Legendary chocolate chip walnut cookie.',emoji:'🥐',lat:40.7791,lng:-73.9819}
+    ],
+    tasks:{
+      today:[
+        {id:1,title:"Review Q1 report draft",cat:'Work',done:true},
+        {id:2,title:'Pick up dry cleaning',cat:'Personal',done:true},
+        {id:3,title:"Book dinner for Sarah's birthday",cat:'',done:false,tags:[{l:'3 days',c:'urgent'},{l:'Sarah',c:'person'}]},
+        {id:4,title:'Call dentist for appointment',cat:'Health',done:false},
+        {id:5,title:'Read 30 min: Thinking Fast & Slow',cat:'Learning',done:false}
+      ],
+      upcoming:[
+        {id:6,title:'Prepare slides for product review',cat:'Work',due:'Mar 18',done:false},
+        {id:7,title:'Monthly finance review',cat:'Finance',due:'Mar 31',done:false}
+      ]
+    },
+    transactions:[
+      {id:1,desc:'Ichiran Ramen',sub:'Food · Mar 15',amount:-24,icon:'🍜',iconBg:'gold-bg'},
+      {id:2,desc:'MetroCard refill',sub:'Transport · Mar 14',amount:-33,icon:'🚇',iconBg:'blue-bg'},
+      {id:3,desc:'Blue Bottle Coffee',sub:'Food · Mar 14',amount:-7,icon:'☕',iconBg:'surface3'},
+      {id:4,desc:'Salary deposit',sub:'Income · Mar 1',amount:6200,icon:'$',iconBg:'green-bg'}
+    ],
+    study:{
+      subjects:[
+        {id:1,name:'Mathematics',teacher:'Prof. Lin',color:'blue'},
+        {id:2,name:'English Literature',teacher:'Ms. Chen',color:'green'},
+        {id:3,name:'Biology',teacher:'Dr. Wang',color:'red'}
+      ],
+      assignments:[
+        {id:1,title:'Calculus Problem Set 4',subject:'Mathematics',type:'assignment',due:'2026-03-20',notes:'Problems 1-30',done:false},
+        {id:2,title:'Essay: Hamlet Analysis',subject:'English Literature',type:'assignment',due:'2026-03-25',notes:'1500 words',done:false},
+        {id:3,title:'Cell Division Lab Report',subject:'Biology',type:'project',due:'2026-04-01',notes:'Include diagrams',done:false},
+        {id:4,title:'Chapter 3 Quiz',subject:'Mathematics',type:'quiz',due:'2026-03-18',notes:'',done:true}
+      ],
+      studyStreak:0,
+      lastStudyDate:null
+    }
+  };
+}
+
+function getStore(email){
+  const all=JSON.parse(localStorage.getItem(STORE_KEY)||'{}');
+  if(!all[email]){all[email]=defaultStore();localStorage.setItem(STORE_KEY,JSON.stringify(all));}
+  return all[email];
+}
+
+let _saveTimer=null;
+function saveStore(){
+  // 1. Always save locally immediately
+  const all=JSON.parse(localStorage.getItem(STORE_KEY)||'{}');
+  all[currentUser.email]=store;
+  localStorage.setItem(STORE_KEY,JSON.stringify(all));
+  // 2. Debounced cloud sync (wait 1.5s so rapid changes batch together)
+  if(supaConfigured()){
+    clearTimeout(_saveTimer);
+    _saveTimer=setTimeout(async()=>{
+      const ok=await supaSave(currentUser.email, store);
+      setSyncStatus(ok?'synced':'error');
+    },1500);
+    setSyncStatus('saving');
+  }
+}
+
+async function loadFromCloud(){
+  if(!supaConfigured()||!currentUser) return;
+  setSyncStatus('loading');
+  const cloudData=await supaLoad(currentUser.email);
+  if(cloudData){
+    // Cloud wins — merge into local
+    store=cloudData;
+    const all=JSON.parse(localStorage.getItem(STORE_KEY)||'{}');
+    all[currentUser.email]=store;
+    localStorage.setItem(STORE_KEY,JSON.stringify(all));
+    renderAll();
+    setSyncStatus('synced');
+    showToast('✓ 資料已從雲端同步');
+  } else {
+    // No cloud data yet — push local up
+    await supaSave(currentUser.email, store);
+    setSyncStatus('synced');
+  }
+}
+
+// Sync status indicator
+function setSyncStatus(state){
+  const el=document.getElementById('sync-status');
+  if(!el) return;
+  const states={
+    synced: {icon:'☁', label:'已同步', color:'var(--green)'},
+    saving: {icon:'↑',  label:'同步中…', color:'var(--text2)'},
+    loading:{icon:'↓',  label:'載入中…', color:'var(--blue)'},
+    error:  {icon:'⚠',  label:'同步失敗', color:'var(--red)'},
+    local:  {icon:'◎',  label:'僅本機',  color:'var(--text3)'}
+  };
+  const s=states[state]||states.local;
+  el.innerHTML=`<span style="color:${s.color};font-size:11px;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;gap:4px;cursor:pointer" onclick="openSupaSetup()" title="點擊設定雲端同步"><span>${s.icon}</span><span>${s.label}</span></span>`;
+}
+
+function getUsers(){return JSON.parse(localStorage.getItem(USERS_KEY)||'{}')}
+function saveUsers(u){localStorage.setItem(USERS_KEY,JSON.stringify(u))}
+function getSession(){return JSON.parse(localStorage.getItem(SESSION_KEY)||'null')}
+function setSession(s){localStorage.setItem(SESSION_KEY,JSON.stringify(s))}
+
+// ── AUTH — simplified, no accounts ───────────────────────
+const QUICK_NAME_KEY='alfred_quick_name';
+
+function quickEnter(){
+  const name=document.getElementById('quick-name').value.trim();
+  const err=document.getElementById('login-error');
+  if(!name){err.textContent='Please enter your name.';return;}
+  err.textContent='';
+  localStorage.setItem(QUICK_NAME_KEY,name);
+  bootApp(name);
+}
+
+function doLogout(){
+  localStorage.removeItem(QUICK_NAME_KEY);
+  document.getElementById('auth-screen').classList.add('active');
+  document.getElementById('app-screen').classList.remove('active');
+  const inp=document.getElementById('quick-name');if(inp)inp.value='';
+  chatHistory=[];currentUser=null;store=null;
+}
+
+function bootApp(nameArg){
+  const name=nameArg||localStorage.getItem(QUICK_NAME_KEY);
+  if(!name)return;
+  const email='local@alfred.app';
+  currentUser={email,name};
+  store=getStore(email);
+  const first=name.split(' ')[0];
+  document.getElementById('user-display-name').textContent=name;
+  document.getElementById('user-avatar').textContent=name.charAt(0).toUpperCase();
+  document.getElementById('topbar-date').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  renderAll();
+  renderXPBar();
+  document.getElementById('auth-screen').classList.remove('active');
+  document.getElementById('app-screen').classList.add('active');
+  initAlfredChat(first);
+  // Init sync
+  if(supaConfigured()){ setSyncStatus('loading'); loadFromCloud(); }
+  else setSyncStatus('local');
+}
+window.addEventListener('DOMContentLoaded',()=>{
+  const saved=localStorage.getItem(QUICK_NAME_KEY);
+  if(saved) bootApp(saved);
+  else setTimeout(()=>document.getElementById('quick-name')?.focus(),100);
+});
+
+// ── SUPABASE SETUP UI ─────────────────────────────────────
+function openSupaSetup(){
+  const c=getSupaConfig();
+  const urlEl=document.getElementById('supa-url-input');
+  const anonEl=document.getElementById('supa-anon-input');
+  if(urlEl) urlEl.value=c.url||'';
+  if(anonEl) anonEl.value=c.anon||'';
+  document.getElementById('supa-test-result').textContent='';
+  openModal('supa');
+}
+
+function saveSupaConfig(){
+  const url=(document.getElementById('supa-url-input').value||'').trim().replace(/\/$/,'');
+  const anon=(document.getElementById('supa-anon-input').value||'').trim();
+  if(!url||!anon){showToast('請填寫 URL 和 Key');return;}
+  if(!url.startsWith('https://')){showToast('URL 必須以 https:// 開頭');return;}
+  localStorage.setItem(SUPA_URL_KEY,url);
+  localStorage.setItem(SUPA_ANON_KEY,anon);
+  closeModal('supa');
+  showToast('設定已儲存，正在同步…');
+  setSyncStatus('loading');
+  loadFromCloud();
+}
+
+function clearSupaConfig(){
+  localStorage.removeItem(SUPA_URL_KEY);
+  localStorage.removeItem(SUPA_ANON_KEY);
+  setSyncStatus('local');
+  closeModal('supa');
+  showToast('已清除雲端設定，改用本機儲存');
+}
+
+async function testSupaConnection(){
+  const url=(document.getElementById('supa-url-input').value||'').trim().replace(/\/$/,'');
+  const anon=(document.getElementById('supa-anon-input').value||'').trim();
+  const res=document.getElementById('supa-test-result');
+  if(!url||!anon){res.style.color='var(--red)';res.textContent='請先填寫 URL 和 Key';return;}
+  res.style.color='var(--text2)';res.textContent='測試中…';
+  try{
+    const r=await fetch(url+'/rest/v1/alfred_store?limit=1',{
+      headers:{'apikey':anon,'Authorization':'Bearer '+anon}
+    });
+    if(r.ok||r.status===406){
+      res.style.color='var(--green)';
+      res.textContent='✓ 連線成功！'+(r.status===406?' (資料表尚未建立，請執行 SQL)':'');
+    } else if(r.status===401){
+      res.style.color='var(--red)';res.textContent='✗ Anon Key 無效';
+    } else if(r.status===404){
+      res.style.color='var(--red)';res.textContent='✗ URL 錯誤或 Project 不存在';
+    } else {
+      res.style.color='var(--red)';res.textContent='✗ 錯誤 HTTP '+r.status;
+    }
+  }catch(e){
+    res.style.color='var(--red)';
+    res.textContent='✗ 無法連線：'+(e.message.includes('fetch')?'網路錯誤，請確認 URL 正確':e.message);
+  }
+}
+
+// ── NAV ───────────────────────────────────────────────────
+function showPanel(id,title){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  const nav=document.getElementById('nav-'+id);
+  if(nav)nav.classList.add('active');
+  document.getElementById('topbar-title').textContent=title;
+  if(id==='places'){
+    setTimeout(()=>{
+      if(alfredMap){alfredMap.resize();}
+      else{renderPlaces();}
+    },120);
+  }
+}
+
+// ── RENDER ────────────────────────────────────────────────
+function renderAll(){renderTasks();renderDashPeople();renderPeople();renderPlaces();renderTransactions();updateBadge();renderStudy();}
+
+function taskHTML(t,bucket){
+  const tags=(t.tags||[]).map(tag=>`<span class="tag ${tag.c}">${tag.l}</span>`).join('');
+  const catTag=t.cat?`<span class="tag">${t.cat}</span>`:'';
+  const dueTag=t.due?`<span style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace">${t.due}</span>`:'';
+  const priColors={high:'#f87171',medium:'rgba(255,255,255,0.5)',low:'var(--text3)'};
+  const priDot=`<div class="task-priority" style="background:${priColors[t.priority||'medium']}"></div>`;
+  const xpMap={high:50,medium:25,low:10};
+  const xpBadge=`<span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-left:auto">${xpMap[t.priority||'medium']}xp</span>`;
+  return `<div class="task-item">
+    ${priDot}
+    <div class="task-check${t.done?' done':''}" onclick="toggleTask(${t.id},'${bucket}')"></div>
+    <div class="task-body">
+      <div class="task-title${t.done?' done':''}" style="display:flex;align-items:center;gap:6px">${t.title}${!t.done?xpBadge:''}</div>
+      <div class="task-meta">${catTag}${tags}${dueTag}</div>
+    </div></div>`;
+}
+function renderTasks(){
+  const today=document.getElementById('tasks-today'),upcoming=document.getElementById('tasks-upcoming');
+  const dash=document.getElementById('dash-tasks');
+  today.innerHTML='';upcoming.innerHTML='';if(dash)dash.innerHTML='';
+  store.tasks.today.forEach(t=>{today.innerHTML+=taskHTML(t,'today');if(dash)dash.innerHTML+=taskHTML(t,'today');});
+  store.tasks.upcoming.forEach(t=>upcoming.innerHTML+=taskHTML(t,'upcoming'));
+}
+function renderDashPeople(){
+  const el=document.getElementById('dash-people');
+  if(!el)return;
+  el.innerHTML='';
+  store.people.slice(0,3).forEach(p=>{
+    const bg=p.color==='gold'?'var(--gold-bg)':p.color==='blue'?'var(--blue-bg)':'var(--green-bg)';
+    const fg=p.color==='gold'?'var(--gold)':p.color==='blue'?'var(--blue)':'var(--green)';
+    const ini=p.initials||(p.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2));
+    el.innerHTML+=`<div class="task-item" style="cursor:pointer" onclick="showPanel('people','People')">
+      <div class="p-avatar" style="width:36px;height:36px;font-size:13px;background:${bg};color:${fg}">${ini}</div>
+      <div class="task-body"><div class="task-title">${p.name}</div>
+      <div class="task-meta">${p.bday?`<span class="tag urgent">${p.bday}</span>`:''}<span class="tag">${p.rel||''}</span></div></div></div>`;
+  });
+}
+function toggleTask(id,bucket){
+  const t=store.tasks[bucket].find(x=>x.id===id);
+  if(!t)return;
+  const wasDone=t.done;
+  t.done=!t.done;
+  saveStore();renderTasks();updateBadge();
+  if(!wasDone&&t.done){
+    const xpMap={high:50,medium:25,low:10};
+    const xp=xpMap[t.priority||'medium']||25;
+    awardXP(xp,'+'+ xp +' XP');
+  }
+}
+function updateBadge(){
+  const r=store.tasks.today.filter(t=>!t.done).length;
+  document.getElementById('badge-tasks').textContent=r;
+}
+function renderPeople(){
+  const grid=document.getElementById('people-grid');
+  grid.innerHTML='';
+  store.people.forEach(p=>{
+    const bg=p.color==='gold'?'var(--gold-bg)':p.color==='blue'?'var(--blue-bg)':'var(--green-bg)';
+    const fg=p.color==='gold'?'var(--gold)':p.color==='blue'?'var(--blue)':'var(--green)';
+    const ini=p.initials||(p.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2));
+    grid.innerHTML+=`<div class="person-card">
+      <div class="person-top">
+        <div class="p-avatar" style="background:${bg};color:${fg}">${ini}</div>
+        <div><div class="p-name">${p.name}</div><div class="p-sub">${p.rel||''}</div></div>
+      </div>
+      <div class="p-fields">
+        ${p.bday?`<div class="p-field"><span class="p-field-label">Birthday</span><span class="p-field-val">${p.bday}</span></div>`:''}
+        ${p.food?`<div class="p-field"><span class="p-field-label">Favorite food</span><span class="p-field-val">${p.food}</span></div>`:''}
+        ${p.coffee?`<div class="p-field"><span class="p-field-label">Coffee</span><span class="p-field-val">${p.coffee}</span></div>`:''}
+        ${p.lastMet?`<div class="p-field"><span class="p-field-label">Last met</span><span class="p-field-val">${p.lastMet}</span></div>`:''}
+        ${p.notes?`<div class="p-field"><span class="p-field-label">Memory</span><span class="p-field-val">${p.notes}</span></div>`:''}
+      </div>
+      ${p.alfredNote?`<div class="p-alfred-note">${p.alfredNote}</div>`:''}
+    </div>`;
+  });
+}
+let alfredMap=null,alfredMarkers=[];
+function getLatLng(p){
+  // Always use stored precise coordinates
+  if(p.lat!=null && p.lng!=null) return [parseFloat(p.lng), parseFloat(p.lat)];
+  // Fallback for legacy data with city only
+  const city=(p.city||'').toLowerCase().trim();
+  const fallbacks={'new york':[-73.9840,40.7549],'nyc':[-73.9840,40.7549],'taipei':[121.5654,25.0330],'tokyo':[139.6503,35.6762],'san francisco':[-122.4194,37.7749],'london':[-0.1278,51.5074],'paris':[2.3522,48.8566],'seoul':[126.9780,37.5665],'berlin':[13.4050,52.5200],'sydney':[151.2093,-33.8688],'los angeles':[-118.2437,34.0522],'singapore':[103.8198,1.3521],'dubai':[55.2708,25.2048]};
+  return fallbacks[city]||[121.5654,25.0330];
+}
+
+function renderPlaces(){
+  const grid=document.getElementById('places-grid');
+  const filterRow=document.getElementById('filter-row');
+  if(!grid||!filterRow) return;
+  grid.innerHTML='';
+  const types=[...new Set(store.places.map(p=>p.type).filter(Boolean))];
+  const typeEmoji={ramen:'🍜',coffee:'☕',jazz:'🎷',bakery:'🥐',bar:'🍺',restaurant:'🍽️',cafe:'☕',club:'🎷'};
+  filterRow.innerHTML='<div class="filter-btn active" onclick="filterPlaces(this,\'all\')">All</div>';
+  types.forEach(type=>{
+    filterRow.innerHTML+=`<div class="filter-btn" onclick="filterPlaces(this,'${type}')">${typeEmoji[type]||'📍'} ${type.charAt(0).toUpperCase()+type.slice(1)}</div>`;
+  });
+  store.places.forEach((p,idx)=>{
+    const stars='★'.repeat(p.rating||0)+'☆'.repeat(5-(p.rating||0));
+    grid.innerHTML+=`<div class="place-card" data-type="${p.type||''}" onclick="flyToPlace(${idx})">
+      <div class="place-name">${p.emoji||'📍'} ${p.name}</div>
+      <div class="place-type">${p.type||''} · ${p.city||''}${p.addr?' · '+p.addr:''}</div>
+      <div class="place-stars">${stars}</div>
+      ${p.notes?`<div class="place-note">${p.notes}</div>`:''}
+    </div>`;
+  });
+  initMap();
+}
+function flyToPlace(idx){
+  const p=store.places[idx];
+  if(!p||!alfredMap) return;
+  document.getElementById('alfred-map').scrollIntoView({behavior:'smooth',block:'nearest'});
+  alfredMap.flyTo({center:getLatLng(p),zoom:16,duration:900,essential:true});
+  setTimeout(()=>{
+    if(alfredMarkers[idx] && !alfredMarkers[idx].getPopup().isOpen()){
+      alfredMarkers[idx].togglePopup();
+    }
+  },950);
+}
+function initMap(){
+  const mapEl=document.getElementById('alfred-map');
+  if(!mapEl||typeof maplibregl==='undefined') return;
+  if(!alfredMap){
+    const center=store.places.length>0?getLatLng(store.places[0]):[121.5654,25.0330];
+    alfredMap=new maplibregl.Map({
+      container:'alfred-map',
+      style:'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+      center:center,zoom:12,attributionControl:true
+    });
+    alfredMap.addControl(new maplibregl.NavigationControl({showCompass:false}),'top-right');
+    alfredMap.on('load',()=>{ addMapMarkers(); fitAllMarkers(); });
+  } else {
+    alfredMarkers.forEach(m=>m.remove());
+    alfredMarkers=[];
+    addMapMarkers();
+    fitAllMarkers();
+  }
+  setTimeout(()=>{if(alfredMap)alfredMap.resize();},150);
+}
+function addMapMarkers(){
+  const pinHex={ramen:'#c8a96e',coffee:'#6a8eab',jazz:'#c47a6a',bakery:'#6aab8a',bar:'#9a7eab',restaurant:'#ab9a6a',default:'#9a9188'};
+  store.places.forEach((p,idx)=>{
+    const col=pinHex[p.type]||pinHex.default;
+    const stars='★'.repeat(p.rating||0)+'☆'.repeat(5-(p.rating||0));
+    const lngLat=getLatLng(p);
+    const el=document.createElement('div');
+    el.style.cssText=`width:16px;height:16px;border-radius:50%;background:${col};border:2.5px solid #0f0e0c;box-shadow:0 2px 10px rgba(0,0,0,.8);cursor:pointer;transition:transform .15s`;
+    el.addEventListener('mouseenter',()=>el.style.transform='scale(1.6)');
+    el.addEventListener('mouseleave',()=>el.style.transform='scale(1)');
+    const popup=new maplibregl.Popup({offset:16,closeButton:true,maxWidth:'200px'})
+      .setHTML(`<div class="pop-name">${p.emoji||'📍'} ${p.name}</div><div class="pop-type">${p.type||''} · ${p.city||''}</div><div class="pop-stars">${stars}</div>${p.notes?`<div class="pop-note">${p.notes}</div>`:''}`);
+    const marker=new maplibregl.Marker({element:el}).setLngLat(lngLat).setPopup(popup).addTo(alfredMap);
+    alfredMarkers.push(marker);
+  });
+}
+function fitAllMarkers(){
+  if(store.places.length===0) return;
+  if(store.places.length===1){
+    alfredMap.flyTo({center:getLatLng(store.places[0]),zoom:15,duration:600});
+  } else {
+    const coords=store.places.map(p=>getLatLng(p));
+    const lngs=coords.map(c=>c[0]),lats=coords.map(c=>c[1]);
+    alfredMap.fitBounds(
+      [[Math.min(...lngs),Math.min(...lats)],[Math.max(...lngs),Math.max(...lats)]],
+      {padding:{top:50,bottom:50,left:50,right:50},maxZoom:14,duration:600}
+    );
+  }
+}
+
+
+function renderTransactions(){
+  const el=document.getElementById('tx-list-items');
+  el.innerHTML='';
+  store.transactions.forEach(t=>{
+    const isIncome=t.amount>0;
+    el.innerHTML+=`<div class="tx-item"><div class="tx-icon" style="background:var(--${t.iconBg||'surface3'})">${t.icon||'$'}</div><div><div class="tx-name">${t.desc}</div><div class="tx-sub">${t.sub||''}</div></div><div class="tx-amt ${isIncome?'income':'expense'}">${isIncome?'+':'-'}$${Math.abs(t.amount)}</div></div>`;
+  });
+}
+function filterPlaces(btn,type){
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.place-card').forEach(c=>{c.style.display=(type==='all'||c.dataset.type===type)?'':'none';});
+}
+
+// ── MODALS ────────────────────────────────────────────────
+function openModal(type){document.getElementById('overlay-'+type).classList.remove('hidden');}
+function closeModal(type){document.getElementById('overlay-'+type).classList.add('hidden');}
+
+function openAddPerson(){
+  ['p-name','p-rel','p-bday','p-food','p-coffee','p-notes'].forEach(id=>{document.getElementById(id).value='';});
+  openModal('person');
+  setTimeout(()=>document.getElementById('p-name').focus(),80);
+}
+function openAddPlace(){
+  ['pl-name','pl-type','pl-addr','pl-rating','pl-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  clearGeocode();
+  openModal('place');
+  setTimeout(()=>document.getElementById('pl-name').focus(),80);
+}
+function openAddTask(){
+  const el=document.getElementById('t-title');if(el)el.value='';
+  const due=document.getElementById('t-due');if(due)due.value='';
+  // Reset category and priority pills
+  document.querySelectorAll('#cat-pills .cat-pill').forEach(p=>p.classList.remove('selected'));
+  const none=document.querySelector('#cat-pills [data-cat=""]');if(none)none.classList.add('selected');
+  document.querySelectorAll('#priority-pills .cat-pill').forEach(p=>p.classList.remove('selected'));
+  const med=document.querySelector('#priority-pills [data-pri="medium"]');if(med)med.classList.add('selected');
+  openModal('task');
+  setTimeout(()=>document.getElementById('t-title').focus(),80);
+}
+function selectCat(el,cat){
+  document.querySelectorAll('#cat-pills .cat-pill').forEach(p=>p.classList.remove('selected'));
+  el.classList.add('selected');
+}
+function selectPri(el,pri){
+  document.querySelectorAll('#priority-pills .cat-pill').forEach(p=>p.classList.remove('selected'));
+  el.classList.add('selected');
+}
+function openAddTransaction(){
+  ['tx-desc','tx-amount','tx-cat'].forEach(id=>{document.getElementById(id).value='';});
+  openModal('transaction');
+  setTimeout(()=>document.getElementById('tx-desc').focus(),80);
+}
+
+function savePerson(){
+  const name=document.getElementById('p-name').value.trim();
+  if(!name){showToast('Name is required.');return}
+  const colors=['gold','blue','green'];
+  const color=colors[store.people.length%colors.length];
+  const initials=name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  store.people.push({id:Date.now(),name,rel:document.getElementById('p-rel').value.trim(),bday:document.getElementById('p-bday').value.trim(),food:document.getElementById('p-food').value.trim(),coffee:document.getElementById('p-coffee').value.trim(),lastMet:'',notes:document.getElementById('p-notes').value.trim(),alfredNote:'',initials,color});
+  saveStore();renderPeople();renderDashPeople();closeModal('person');showToast('Person added.');awardXP(30,'+30 XP — New connection');
+}
+
+// ── Geocoding with smart fallback + draggable mini-map ─────
+let pendingGeocode={lat:null,lng:null,display:null};
+let modalMap=null, modalMarker=null;
+
+function clearGeocode(){
+  pendingGeocode={lat:null,lng:null,display:null};
+  const res=document.getElementById('geocode-result');
+  const status=document.getElementById('geocode-status');
+  const preview=document.getElementById('modal-map-preview');
+  if(res){res.style.display='none';res.textContent='';}
+  if(status) status.textContent='';
+  if(preview) preview.style.display='none';
+  if(modalMarker){modalMarker.remove();modalMarker=null;}
+  if(modalMap){modalMap.remove();modalMap=null;}
+  // Reset GPS button
+  const icon=document.getElementById('gps-icon');
+  const label=document.getElementById('gps-label');
+  const btn=document.getElementById('btn-gps');
+  if(icon) icon.textContent='📍';
+  if(label) label.textContent='Use my current GPS location';
+  if(btn){btn.style.borderColor='var(--border2)';btn.style.color='var(--text)';btn.disabled=false;}
+}
+
+// Strip house number from address to get street-level fallback
+function stripHouseNumber(addr){
+  // Remove leading numbers like "87號", "No. 87", "87 "
+  return addr
+    .replace(/^no\.?\s*\d+[,\s]*/i,'')
+    .replace(/^\d+號?\s*/,'')
+    .replace(/,?\s*\d+號/g,'')
+    .trim();
+}
+
+async function useGPS(){
+  const btn=document.getElementById('btn-gps');
+  const icon=document.getElementById('gps-icon');
+  const label=document.getElementById('gps-label');
+  const statusEl=document.getElementById('geocode-status');
+
+  if(!navigator.geolocation){
+    showToast('您的瀏覽器不支援 GPS 定位');
+    return;
+  }
+
+  // Loading state
+  icon.textContent='⏳';
+  label.textContent='定位中…';
+  btn.style.borderColor='var(--gold)';
+  btn.style.color='var(--gold)';
+  btn.disabled=true;
+
+  navigator.geolocation.getCurrentPosition(
+    async (pos)=>{
+      const lat=pos.coords.latitude;
+      const lng=pos.coords.longitude;
+      const accuracy=Math.round(pos.coords.accuracy);
+
+      // Reverse geocode to get human-readable address
+      try{
+        const url=`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
+        const res=await fetch(url,{headers:{'Accept-Language':'zh-TW,zh,en','User-Agent':'AlfredLifeOS/1.0'}});
+        const data=await res.json();
+        const addr=data.display_name||`${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        const shortAddr=data.address?(
+          [data.address.road||data.address.pedestrian,data.address.house_number,data.address.suburb||data.address.city_district,data.address.city||data.address.town||data.address.county].filter(Boolean).join(', ')
+        ):addr;
+
+        // Fill in address field
+        document.getElementById('pl-addr').value=shortAddr;
+
+        // Set geocode state
+        pendingGeocode={lat,lng,display:addr};
+
+        // Update status
+        statusEl.textContent=`✓ GPS 定位成功（精確度 ±${accuracy}m）`;
+        statusEl.style.color='var(--green)';
+
+        const resultEl=document.getElementById('geocode-result');
+        resultEl.style.display='block';
+        resultEl.style.background='var(--green-bg)';
+        resultEl.style.color='var(--green)';
+        resultEl.style.border='1px solid rgba(106,171,138,0.25)';
+        resultEl.innerHTML=`📍 ${shortAddr}<br><span style="font-size:11px;opacity:.75">精確度：±${accuracy} 公尺 · 可拖移圖釘微調</span>`;
+
+        // Reset button
+        icon.textContent='✓';
+        label.textContent='GPS 定位完成';
+        btn.style.borderColor='rgba(74,222,128,0.4)';
+        btn.style.color='#4ade80';
+        btn.disabled=false;
+
+        // Show draggable mini-map
+        showModalMapPreview(lat,lng);
+
+      }catch(err){
+        // GPS worked but reverse geocode failed — still use coordinates
+        pendingGeocode={lat,lng,display:`${lat.toFixed(5)}, ${lng.toFixed(5)}`};
+        document.getElementById('pl-addr').value=`${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        statusEl.textContent=`✓ GPS 定位成功（精確度 ±${accuracy}m）`;
+        statusEl.style.color='var(--green)';
+        icon.textContent='✓';label.textContent='GPS 定位完成';
+        btn.style.borderColor='var(--green)';btn.style.color='var(--green)';
+        btn.disabled=false;
+        showModalMapPreview(lat,lng);
+      }
+    },
+    (err)=>{
+      // Error handling
+      const msgs={1:'請允許瀏覽器存取您的位置',2:'無法取得位置，請確認 GPS 已開啟',3:'定位逾時，請再試一次'};
+      icon.textContent='📍';
+      label.textContent='Use my current GPS location';
+      btn.style.borderColor='var(--red)';
+      btn.style.color='var(--red)';
+      btn.disabled=false;
+      statusEl.textContent=msgs[err.code]||'定位失敗';
+      statusEl.style.color='var(--red)';
+      showToast(msgs[err.code]||'GPS 定位失敗');
+    },
+    {enableHighAccuracy:true, timeout:12000, maximumAge:0}
+  );
+}
+
+async function nominatimSearch(query){
+  const url=`https://nominatim.openstreetmap.org/search?format=json&limit=3&addressdetails=1&q=${encodeURIComponent(query)}`;
+  const res=await fetch(url,{headers:{'Accept-Language':'zh-TW,zh,en','User-Agent':'AlfredLifeOS/1.0'}});
+  const data=await res.json();
+  return data||[];
+}
+
+async function geocodeAndPreview(){
+  const addr=document.getElementById('pl-addr').value.trim();
+  if(!addr){showToast('Enter an address first.');return}
+  const statusEl=document.getElementById('geocode-status');
+  const resultEl=document.getElementById('geocode-result');
+  statusEl.textContent='Searching…';
+  statusEl.style.color='var(--gold)';
+  resultEl.style.display='none';
+
+  try{
+    let hit=null;
+    let fallbackUsed=false;
+
+    // Round 1: try exact address
+    let results=await nominatimSearch(addr);
+    if(results.length>0){
+      hit=results[0];
+    } else {
+      // Round 2: strip house number, search street only
+      const streetOnly=stripHouseNumber(addr);
+      if(streetOnly && streetOnly!==addr){
+        results=await nominatimSearch(streetOnly);
+        if(results.length>0){hit=results[0];fallbackUsed=true;}
+      }
+    }
+    // Round 3: try just the last meaningful segment (for CJK addresses)
+    if(!hit){
+      const segments=addr.split(/[,，]/);
+      for(let i=0;i<segments.length;i++){
+        const seg=segments[i].trim();
+        if(seg.length>2){
+          results=await nominatimSearch(seg);
+          if(results.length>0){hit=results[0];fallbackUsed=true;break;}
+        }
+      }
+    }
+
+    if(!hit){
+      statusEl.textContent='找不到 — 試試更精確的地址或只輸入街道名';
+      statusEl.style.color='var(--red)';
+      resultEl.style.display='block';
+      resultEl.style.background='var(--red-bg)';
+      resultEl.style.color='var(--red)';
+      resultEl.style.border='1px solid rgba(196,122,106,0.25)';
+      resultEl.textContent='查無結果。試試：只輸入街道（不含門牌號），或改用英文地址。';
+      return;
+    }
+
+    pendingGeocode={lat:parseFloat(hit.lat),lng:parseFloat(hit.lon),display:hit.display_name};
+
+    if(fallbackUsed){
+      statusEl.textContent='⚠ 門牌號碼未收錄，已定位到街道';
+      statusEl.style.color='var(--gold)';
+      resultEl.style.display='block';
+      resultEl.style.background='rgba(200,169,110,0.1)';
+      resultEl.style.color='var(--gold2)';
+      resultEl.style.border='1px solid rgba(200,169,110,0.25)';
+      resultEl.innerHTML='📍 '+hit.display_name+'<br><span style="font-size:11px;opacity:.8">門牌號碼在地圖上沒有紀錄，已定位到街道附近。請拖移圖釘到精確位置。</span>';
+    } else {
+      statusEl.textContent='✓ 找到了';
+      statusEl.style.color='var(--green)';
+      resultEl.style.display='block';
+      resultEl.style.background='var(--green-bg)';
+      resultEl.style.color='var(--green)';
+      resultEl.style.border='1px solid rgba(106,171,138,0.25)';
+      resultEl.textContent='📍 '+hit.display_name;
+    }
+
+    // Show draggable mini-map in modal
+    showModalMapPreview(pendingGeocode.lat, pendingGeocode.lng);
+
+  }catch(err){
+    statusEl.textContent='搜尋失敗，請確認網路連線';
+    statusEl.style.color='var(--red)';
+  }
+}
+
+function showModalMapPreview(lat, lng){
+  const preview=document.getElementById('modal-map-preview');
+  const mapEl=document.getElementById('modal-map');
+  preview.style.display='block';
+
+  if(modalMap){
+    modalMap.remove();modalMap=null;
+    if(modalMarker){modalMarker.remove();modalMarker=null;}
+  }
+
+  // Small delay so the div is visible before init
+  setTimeout(()=>{
+    modalMap=new maplibregl.Map({
+      container:'modal-map',
+      style:'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+      center:[lng,lat],zoom:17,
+      attributionControl:false,
+      interactive:true
+    });
+    modalMap.on('load',()=>{
+      // Draggable marker
+      const el=document.createElement('div');
+      el.style.cssText='width:18px;height:18px;border-radius:50%;background:#c8a96e;border:3px solid #0f0e0c;box-shadow:0 2px 10px rgba(0,0,0,.8);cursor:grab';
+      modalMarker=new maplibregl.Marker({element:el,draggable:true})
+        .setLngLat([lng,lat])
+        .addTo(modalMap);
+      // Update pendingGeocode on drag
+      modalMarker.on('dragend',()=>{
+        const pos=modalMarker.getLngLat();
+        pendingGeocode.lat=pos.lat;
+        pendingGeocode.lng=pos.lng;
+        const s=document.getElementById('geocode-status');
+        if(s){s.textContent='✓ 位置已調整';s.style.color='var(--green)';}
+      });
+    });
+  },80);
+}
+
+function savePlace(){
+  const name=document.getElementById('pl-name').value.trim();
+  const addr=document.getElementById('pl-addr').value.trim();
+  if(!name){showToast('Name is required.');return}
+  if(!addr){showToast('Address is required for pinning on the map.');return}
+  if(pendingGeocode.lat==null){
+    showToast('Click "Verify location" first to pin the exact spot.');
+    return;
+  }
+  const type=document.getElementById('pl-type').value.trim().toLowerCase();
+  const typeEmoji={ramen:'🍜',coffee:'☕',jazz:'🎷',bakery:'🥐',bar:'🍺',restaurant:'🍽️',cafe:'☕',club:'🎷',school:'🎓',university:'🎓',park:'🌳',gym:'💪',hospital:'🏥',shop:'🛍️'};
+  const emoji=typeEmoji[type]||'📍';
+  const rating=parseInt(document.getElementById('pl-rating').value)||4;
+  // Extract city from geocoded display name (last meaningful part)
+  const parts=pendingGeocode.display.split(',');
+  const city=parts[parts.length-3]?.trim()||parts[parts.length-2]?.trim()||addr;
+  store.places.push({
+    id:Date.now(),name,type,city,addr,
+    rating,notes:document.getElementById('pl-notes').value.trim(),
+    emoji,lat:pendingGeocode.lat,lng:pendingGeocode.lng
+  });
+  saveStore();
+  clearGeocode();
+  renderPlaces();
+  closeModal('place');
+  showToast('Place pinned.');
+  awardXP(20,'+20 XP — New place');
+  const newIdx=store.places.length-1;
+  setTimeout(()=>flyToPlace(newIdx),300);
+}
+
+function saveTask(){
+  const title=document.getElementById('t-title').value.trim();
+  if(!title){showToast('Task title is required.');return}
+  const due=document.getElementById('t-due').value.trim();
+  const selCat=document.querySelector('#cat-pills .cat-pill.selected');
+  const cat=selCat?selCat.dataset.cat:'';
+  const selPri=document.querySelector('#priority-pills .cat-pill.selected');
+  const priority=selPri?selPri.dataset.pri:'medium';
+  const task={id:Date.now(),title,cat,priority,done:false};
+  if(due&&due.toLowerCase()!=='today'){task.due=due;store.tasks.upcoming.push(task);}
+  else{store.tasks.today.push(task);}
+  saveStore();renderTasks();updateBadge();closeModal('task');showToast('Task added.');
+}
+function saveTransaction(){
+  const desc=document.getElementById('tx-desc').value.trim();
+  const amount=parseFloat(document.getElementById('tx-amount').value);
+  if(!desc||isNaN(amount)){showToast('Description and amount are required.');return}
+  const type=document.getElementById('tx-type').value;
+  const cat=document.getElementById('tx-cat').value.trim();
+  const isIncome=type==='income';
+  store.transactions.unshift({id:Date.now(),desc,sub:(cat||type)+' · Today',amount:isIncome?Math.abs(amount):-Math.abs(amount),icon:isIncome?'$':'−',iconBg:isIncome?'green-bg':'surface3'});
+  saveStore();renderTransactions();closeModal('transaction');showToast('Transaction recorded.');awardXP(10,'+10 XP — Tracked');
+}
+
+// ── TOAST ─────────────────────────────────────────────────
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// ── ALFRED AI ─────────────────────────────────────────────
+// ─── ALFRED AI WITH FUNCTION CALLING ─────────────────────
+let chatHistory=[],isThinking=false;
+function getApiKey(){return localStorage.getItem(API_KEY_STORE)||''}
+function saveApiKey(){
+  const key=document.getElementById('api-key-input').value.trim();
+  if(!key){showToast('Please paste your API key.');return}
+  localStorage.setItem(API_KEY_STORE,key);
+  document.getElementById('api-key-banner').style.display='none';
+  showToast('Alfred 已啟動，可以開始對話了。');
+}
+
+// ── 1. Tools definition (Function Calling) ────────────────
+const ALFRED_TOOLS=[
+  {
+    name:'add_task',
+    description:'新增一個待辦事項到任務清單。如果用戶說「新增任務」、「幫我記下」、「提醒我」等，使用此工具。',
+    input_schema:{
+      type:'object',
+      properties:{
+        title:{type:'string',description:'任務標題'},
+        category:{type:'string',description:'分類，例如：Work、Health、Personal、Learning'},
+        due:{type:'string',description:'截止日期，例如：Today、Mar 20、Upcoming。沒有指定就留空'}
+      },
+      required:['title']
+    }
+  },
+  {
+    name:'complete_task',
+    description:'將某個任務標記為完成。用戶說「完成」、「做完了」、「打勾」等時使用。',
+    input_schema:{
+      type:'object',
+      properties:{
+        title_keyword:{type:'string',description:'任務標題的關鍵字，用來找到對應任務'}
+      },
+      required:['title_keyword']
+    }
+  },
+  {
+    name:'delete_task',
+    description:'刪除一個任務。用戶說「刪掉」、「移除」、「取消」等時使用。',
+    input_schema:{
+      type:'object',
+      properties:{
+        title_keyword:{type:'string',description:'要刪除的任務標題關鍵字'}
+      },
+      required:['title_keyword']
+    }
+  },
+  {
+    name:'add_person',
+    description:'新增一個人到人際資料庫。用戶說「記下朋友資料」、「新增聯絡人」等時使用。',
+    input_schema:{
+      type:'object',
+      properties:{
+        name:{type:'string',description:'姓名'},
+        relationship:{type:'string',description:'關係，例如：朋友、同事、家人'},
+        birthday:{type:'string',description:'生日，例如：Mar 19'},
+        food:{type:'string',description:'喜歡的食物'},
+        coffee:{type:'string',description:'咖啡偏好'},
+        notes:{type:'string',description:'備註或共同記憶'}
+      },
+      required:['name']
+    }
+  },
+  {
+    name:'add_place',
+    description:'新增一個地點。用戶說「記下這個餐廳」、「幫我存這個地方」等時使用。需要地址才能在地圖上標記。',
+    input_schema:{
+      type:'object',
+      properties:{
+        name:{type:'string',description:'地點名稱'},
+        type:{type:'string',description:'類型，例如：ramen、coffee、restaurant、bar'},
+        address:{type:'string',description:'完整地址'},
+        rating:{type:'number',description:'評分 1-5'},
+        notes:{type:'string',description:'備註'}
+      },
+      required:['name']
+    }
+  },
+  {
+    name:'add_transaction',
+    description:'記錄一筆收入或支出。用戶說「記帳」、「我花了」、「收到錢」等時使用。',
+    input_schema:{
+      type:'object',
+      properties:{
+        description:{type:'string',description:'描述，例如：午餐、計程車、薪水'},
+        amount:{type:'number',description:'金額（正數）'},
+        type:{type:'string',enum:['expense','income'],description:'expense 支出 或 income 收入'},
+        category:{type:'string',description:'分類，例如：Food、Transport、Salary'}
+      },
+      required:['description','amount','type']
+    }
+  },
+  {
+    name:'use_gps_and_add_place',
+    description:'用 GPS 取得用戶現在的位置並新增為地點。用戶說「記錄我現在在的地方」、「標記這個位置」等時使用。',
+    input_schema:{
+      type:'object',
+      properties:{
+        name:{type:'string',description:'地點名稱'},
+        type:{type:'string',description:'類型，例如：restaurant、cafe、school'},
+        rating:{type:'number',description:'評分 1-5'},
+        notes:{type:'string',description:'備註'}
+      },
+      required:['name']
+    }
+  }
+];
+
+// ── 2. Execute tool calls ──────────────────────────────────
+async function executeTool(name, input){
+  switch(name){
+
+    case 'add_task':{
+      const task={id:Date.now(),title:input.title,cat:input.category||'',done:false};
+      const due=input.due||'';
+      if(due && due.toLowerCase()!=='today'){task.due=due;store.tasks.upcoming.push(task);}
+      else{store.tasks.today.push(task);}
+      saveStore();renderTasks();updateBadge();
+      return `已新增任務：「${input.title}」${due?'（'+due+'）':''}`;
+    }
+
+    case 'complete_task':{
+      const kw=input.title_keyword.toLowerCase();
+      let found=null;
+      for(const bucket of['today','upcoming']){
+        const t=store.tasks[bucket].find(t=>t.title.toLowerCase().includes(kw));
+        if(t){t.done=true;found=t;break;}
+      }
+      saveStore();renderTasks();updateBadge();
+      return found?`已將「${found.title}」標記為完成 ✓`:`找不到包含「${input.title_keyword}」的任務`;
+    }
+
+    case 'delete_task':{
+      const kw=input.title_keyword.toLowerCase();
+      let deleted=null;
+      for(const bucket of['today','upcoming']){
+        const idx=store.tasks[bucket].findIndex(t=>t.title.toLowerCase().includes(kw));
+        if(idx>=0){deleted=store.tasks[bucket].splice(idx,1)[0];break;}
+      }
+      saveStore();renderTasks();updateBadge();
+      return deleted?`已刪除任務：「${deleted.title}」`:`找不到包含「${input.title_keyword}」的任務`;
+    }
+
+    case 'add_person':{
+      const colors=['gold','blue','green'];
+      const color=colors[store.people.length%colors.length];
+      const initials=input.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+      store.people.push({
+        id:Date.now(),name:input.name,rel:input.relationship||'',
+        bday:input.birthday||'',food:input.food||'',coffee:input.coffee||'',
+        lastMet:'',notes:input.notes||'',alfredNote:'',initials,color
+      });
+      saveStore();renderPeople();renderDashPeople();
+      return `已新增「${input.name}」到人際資料庫`;
+    }
+
+    case 'add_place':{
+      // Geocode the address
+      let lat=null,lng=null;
+      if(input.address){
+        try{
+          const url=`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(input.address)}`;
+          const res=await fetch(url,{headers:{'Accept-Language':'zh-TW,zh,en','User-Agent':'AlfredLifeOS/1.0'}});
+          const data=await res.json();
+          if(data&&data[0]){lat=parseFloat(data[0].lat);lng=parseFloat(data[0].lon);}
+        }catch(e){}
+      }
+      if(lat==null){
+        const base=getLatLng({city:input.address||''});
+        lng=base[0];lat=base[1];
+      }
+      const typeEmoji={ramen:'🍜',coffee:'☕',jazz:'🎷',bakery:'🥐',bar:'🍺',restaurant:'🍽️',cafe:'☕',school:'🎓',default:'📍'};
+      const type=(input.type||'').toLowerCase();
+      store.places.push({
+        id:Date.now(),name:input.name,type,
+        city:'',addr:input.address||'',
+        rating:input.rating||4,notes:input.notes||'',
+        emoji:typeEmoji[type]||'📍',lat,lng
+      });
+      saveStore();renderPlaces();
+      return lat?`已將「${input.name}」標記在地圖上`:`已新增「${input.name}」（地址無法定位，請在地點頁面手動調整）`;
+    }
+
+    case 'use_gps_and_add_place':{
+      return new Promise((resolve)=>{
+        if(!navigator.geolocation){resolve('您的裝置不支援 GPS 定位');return;}
+        navigator.geolocation.getCurrentPosition(
+          async(pos)=>{
+            const lat=pos.coords.latitude,lng=pos.coords.longitude;
+            let addrStr=`${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+            let city='';
+            try{
+              const url=`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18`;
+              const res=await fetch(url,{headers:{'Accept-Language':'zh-TW,zh,en','User-Agent':'AlfredLifeOS/1.0'}});
+              const data=await res.json();
+              if(data.display_name){
+                addrStr=data.display_name.split(',').slice(0,3).join(',').trim();
+                city=data.address?.city||data.address?.town||data.address?.county||'';
+              }
+            }catch(e){}
+            const typeEmoji={restaurant:'🍽️',cafe:'☕',school:'🎓',default:'📍'};
+            const type=(input.type||'').toLowerCase();
+            store.places.push({
+              id:Date.now(),name:input.name,type,city,addr:addrStr,
+              rating:input.rating||4,notes:input.notes||'',
+              emoji:typeEmoji[type]||'📍',lat,lng
+            });
+            saveStore();renderPlaces();
+            resolve(`已用 GPS 將「${input.name}」標記在你現在的位置（${addrStr}）`);
+          },
+          (err)=>{
+            const msgs={1:'請允許 app 存取位置',2:'無法取得位置',3:'定位逾時'};
+            resolve('GPS 定位失敗：'+(msgs[err.code]||err.message));
+          },
+          {enableHighAccuracy:true,timeout:12000,maximumAge:0}
+        );
+      });
+    }
+
+    default:
+      return '未知的工具：'+name;
+  }
+}
+
+// ── 3. System prompt ──────────────────────────────────────
+function buildSystem(){
+  const first=currentUser?.name?.split(' ')[0]||'使用者';
+  const people=store.people.map(p=>`- ${p.name}: ${p.rel||''}, 生日 ${p.bday||'未知'}, 食物 ${p.food||'?'}, 咖啡 ${p.coffee||'?'}, 上次見面 ${p.lastMet||'?'}, 備註 ${p.notes||''}`).join('\n');
+  const places=store.places.map(p=>`- ${p.name} (${p.type||'?'}), ${p.city||''} ${p.addr||''}, ${p.rating||'?'}星, 備註: ${p.notes||''}`).join('\n');
+  const todayTasks=store.tasks.today.map(t=>`- [${t.id}] ${t.title} [${t.done?'已完成':'待辦'}] ${t.cat?'('+t.cat+')':''}`).join('\n');
+  const upcoming=store.tasks.upcoming.map(t=>`- [${t.id}] ${t.title}, 截止 ${t.due||'未定'}`).join('\n');
+  const txs=store.transactions.slice(0,8).map(t=>`- ${t.desc}: ${t.amount>0?'+':''}${t.amount}`).join('\n');
+  return `你是 Alfred，${first} 的私人生活管家。你的角色像蝙蝠俠的 Alfred Pennyworth：沉穩、聰明、體貼、不囉嗦。用繁體中文回答，語氣簡潔溫暖。
+
+你有能力直接操作用戶的資料（透過工具）。當用戶說要新增、完成、刪除任何東西，**直接使用工具執行**，不要只是用文字描述。執行完後簡短確認即可。
+
+用戶的現有資料：
+
+【人際】
+${people||'（尚無資料）'}
+
+【地點】
+${places||'（尚無資料）'}
+
+【今日任務】
+${todayTasks||'（尚無任務）'}
+
+【待辦事項】
+${upcoming||'（尚無）'}
+
+【最近交易】
+${txs||'（尚無）'}
+
+原則：簡短回答。能用工具就用工具，不要只說「我可以幫你...」。執行完後一句話確認。遇到需要更多資訊才能執行的，才問用戶。`;
+}
+
+// ── 4. Chat UI helpers ────────────────────────────────────
+function initAlfredChat(first){
+  chatHistory=[];
+  document.getElementById('chat-messages').innerHTML='';
+  const hour=new Date().getHours();
+  const greet=hour<12?'早安':hour<17?'午安':'晚安';
+  const pending=store.tasks.today.filter(t=>!t.done).length;
+  appendMsg('alfred',`${greet}，${first}。你今天還有 ${pending} 件待辦事項。直接告訴我要做什麼，我來幫你執行。`,true);
+  if(!getApiKey())document.getElementById('api-key-banner').style.display='flex';
+}
+
+function appendMsg(role,text,showChips=false){
+  const container=document.getElementById('chat-messages');
+  const wrap=document.createElement('div');wrap.className='msg '+role;
+  const av=document.createElement('div');av.className='msg-avatar '+role;
+  av.textContent=role==='alfred'?'A':(currentUser?.name?.charAt(0).toUpperCase()||'U');
+  const bubble=document.createElement('div');bubble.className='msg-bubble';
+  bubble.innerHTML=text.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+  wrap.appendChild(av);wrap.appendChild(bubble);container.appendChild(wrap);
+  if(showChips&&role==='alfred'){
+    const chips=document.createElement('div');chips.className='chat-chips';
+    ['幫我新增任務：明天買牛奶','把第一個任務標成完成','記錄我現在在的地方','剛剛花了150塊吃午餐','新增朋友：小明，生日5月1號'].forEach(t=>{
+      const ch=document.createElement('div');ch.className='chip';ch.textContent=t;
+      ch.onclick=()=>{document.getElementById('alfred-input').value=t;sendToAlfred();};
+      chips.appendChild(ch);
+    });
+    bubble.appendChild(chips);
+  }
+  container.scrollTop=container.scrollHeight;
+}
+
+// Tool action confirmation bubble
+function appendToolResult(toolName, result){
+  const container=document.getElementById('chat-messages');
+  const wrap=document.createElement('div');
+  wrap.style.cssText='display:flex;align-items:flex-start;gap:10px;margin:4px 0';
+  const icons={add_task:'✓',complete_task:'✓',delete_task:'✕',add_person:'◯',add_place:'📍',use_gps_and_add_place:'📍',add_transaction:'◎'};
+  wrap.innerHTML=`<div style="font-size:11px;padding:6px 12px;border-radius:20px;background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.12);display:flex;align-items:center;gap:6px"><span>${icons[toolName]||'◆'}</span><span>${result}</span></div>`;
+  container.appendChild(wrap);
+  container.scrollTop=container.scrollHeight;
+}
+
+function showTyping(){
+  const container=document.getElementById('chat-messages');
+  const wrap=document.createElement('div');wrap.className='msg alfred';wrap.id='typing-ind';
+  const av=document.createElement('div');av.className='msg-avatar alfred';av.textContent='A';
+  const bubble=document.createElement('div');bubble.className='msg-bubble';
+  bubble.innerHTML='<div class="typing-dots"><span></span><span></span><span></span></div>';
+  wrap.appendChild(av);wrap.appendChild(bubble);container.appendChild(wrap);
+  container.scrollTop=container.scrollHeight;
+}
+function removeTyping(){const t=document.getElementById('typing-ind');if(t)t.remove();}
+
+// ── 5. Main send function with tool use loop ──────────────
+async function sendToAlfred(){
+  if(isThinking)return;
+  const input=document.getElementById('alfred-input');
+  const text=input.value.trim();
+  if(!text)return;
+  const key=getApiKey();
+  if(!key){document.getElementById('api-key-banner').style.display='flex';showToast('請先設定 Anthropic API Key');return}
+  input.value='';
+  appendMsg('user',text);
+  chatHistory.push({role:'user',content:text});
+  isThinking=true;
+  document.getElementById('chat-send-btn').disabled=true;
+  showTyping();
+
+  try{
+    let continueLoop=true;
+    while(continueLoop){
+      const res=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'x-api-key':key,
+          'anthropic-version':'2023-06-01',
+          'anthropic-dangerous-direct-browser-calls':'true'
+        },
+        body:JSON.stringify({
+          model:'claude-sonnet-4-20250514',
+          max_tokens:1024,
+          system:buildSystem(),
+          tools:ALFRED_TOOLS,
+          messages:chatHistory
+        })
+      });
+      if(!res.ok){const e=await res.json();throw new Error(e.error?.message||'HTTP '+res.status)}
+      const data=await res.json();
+      removeTyping();
+
+      // Collect text and tool_use blocks
+      const textBlocks=data.content.filter(b=>b.type==='text');
+      const toolBlocks=data.content.filter(b=>b.type==='tool_use');
+
+      // Show any text Alfred said
+      if(textBlocks.length>0){
+        const combined=textBlocks.map(b=>b.text).join('\n');
+        if(combined.trim()) appendMsg('alfred',combined);
+      }
+
+      if(data.stop_reason==='tool_use' && toolBlocks.length>0){
+        // Add assistant message to history
+        chatHistory.push({role:'assistant',content:data.content});
+
+        // Execute each tool
+        const toolResults=[];
+        for(const tool of toolBlocks){
+          showTyping();
+          const result=await executeTool(tool.name,tool.input);
+          removeTyping();
+          appendToolResult(tool.name,result);
+          toolResults.push({type:'tool_result',tool_use_id:tool.id,content:result});
+        }
+
+        // Add tool results back to history for next loop
+        chatHistory.push({role:'user',content:toolResults});
+        // Show typing again for Alfred's final response
+        showTyping();
+
+      } else {
+        // No more tool calls — done
+        if(textBlocks.length===0 && toolBlocks.length===0){
+          appendMsg('alfred','完成。');
+        }
+        chatHistory.push({role:'assistant',content:data.content});
+        continueLoop=false;
+      }
+    }
+  }catch(err){
+    removeTyping();
+
+    // ── DIAGNOSTIC ENGINE ──────────────────────────────────
+    const raw = err.message || '';
+    let diagnosis = '';
+    let fix = '';
+
+    if (raw.includes('401') || raw.includes('invalid x-api-key') || raw.includes('authentication')) {
+      diagnosis = '🔑 **API Key 無效或格式錯誤**';
+      fix = '請確認：\n1. Key 以 `sk-ant-api03-` 開頭\n2. 沒有多餘空格\n3. 到 console.anthropic.com 確認 Key 還有效';
+
+    } else if (raw.includes('429') || raw.includes('rate limit') || raw.includes('overloaded')) {
+      diagnosis = '⏳ **請求過於頻繁 / 伺服器忙碌**';
+      fix = '等 30 秒後再試。如果持續發生，可能是免費額度用完了。';
+
+    } else if (raw.includes('403') || raw.includes('permission') || raw.includes('forbidden')) {
+      diagnosis = '🚫 **權限被拒絕**';
+      fix = '你的 API Key 可能沒有足夠的權限，或帳號餘額為零。\n請到 console.anthropic.com 確認帳號狀態。';
+
+    } else if (raw.includes('Load failed') || raw.includes('Failed to fetch') || raw.includes('NetworkError') || raw.includes('fetch')) {
+      diagnosis = '🌐 **瀏覽器封鎖了 API 請求 (CORS / 網路錯誤)**';
+      fix = '這是最常見的問題。原因：\n\n**方法 1 — 用 Claude.ai 開啟（推薦）**\n這個 app 需要在允許直接 API 呼叫的環境中執行。\n\n**方法 2 — 用本機伺服器開啟**\n不要直接開 .html 檔案（file://），改用：\n• 安裝 VS Code → Live Server 插件\n• 或在終端機執行：`npx serve .`\n• 然後用 http://localhost:... 開啟\n\n**方法 3 — 確認 API Key 有效**\n先到 console.anthropic.com 測試 Key 是否正常。';
+
+    } else if (raw.includes('500') || raw.includes('502') || raw.includes('503')) {
+      diagnosis = '🔧 **Anthropic 伺服器錯誤**';
+      fix = 'Anthropic API 暫時出問題，不是你的錯。等幾分鐘後再試。';
+
+    } else if (raw.includes('quota') || raw.includes('billing') || raw.includes('credit')) {
+      diagnosis = '💳 **帳戶餘額不足**';
+      fix = '你的 Anthropic 帳號可能沒有足夠的額度。\n請到 console.anthropic.com → Billing 儲值。';
+
+    } else {
+      diagnosis = '❌ **未知錯誤**';
+      fix = `錯誤訊息：\`${raw}\`\n\n請截圖這個訊息，可以用來 debug。`;
+    }
+
+    appendMsg('alfred', `${diagnosis}\n\n${fix}`);
+
+    // Also log to console for extra debug info
+    console.error('[Alfred Error]', err);
+  }
+  isThinking=false;
+  document.getElementById('chat-send-btn').disabled=false;
+}
+
+function dashAsk(){
+  const q=document.getElementById('dash-q').value.trim();
+  if(!q)return;
+  document.getElementById('dash-q').value='';
+  showPanel('alfred','Alfred');
+  document.getElementById('alfred-input').value=q;
+  sendToAlfred();
+}
+
+// ── STUDY PLANNER ─────────────────────────────────────────
+const SUBJ_COLORS={
+  blue:{bg:'var(--blue-bg)',fg:'var(--blue)'},
+  green:{bg:'var(--green-bg)',fg:'var(--green)'},
+  red:{bg:'var(--red-bg)',fg:'var(--red)'},
+  yellow:{bg:'var(--yellow-bg)',fg:'var(--yellow)'},
+  white:{bg:'var(--surface3)',fg:'var(--text)'}
+};
+let uploadedFiles=[];
+let timerInterval=null,timerSeconds=25*60,timerRunning=false,timerTotal=25*60;
+
+function ensureStudyStore(){
+  if(!store.study){
+    store.study={subjects:[],assignments:[],studyStreak:0,lastStudyDate:null};
+    saveStore();
+  }
+}
+
+function renderStudy(){
+  ensureStudyStore();
+  renderSubjects();
+  renderAssignments('all');
+  updateStudyStats();
+  updateStudyBadge();
+}
+
+function updateStudyStats(){
+  ensureStudyStore();
+  const today=new Date();today.setHours(0,0,0,0);
+  const soon=store.study.assignments.filter(a=>{
+    if(a.done)return false;
+    const d=new Date(a.due);d.setHours(0,0,0,0);
+    return (d-today)/(1000*60*60*24)<=7;
+  }).length;
+  const done=store.study.assignments.filter(a=>a.done).length;
+  setEl('stat-due-soon',soon);
+  setEl('stat-subjects',store.study.subjects.length);
+  setEl('stat-study-streak',store.study.studyStreak||0);
+  setEl('stat-assignments-done',done);
+  setEl('stat-due-label',soon===1?'assignment':'assignments');
+}
+function setEl(id,val){const e=document.getElementById(id);if(e)e.textContent=val;}
+
+function updateStudyBadge(){
+  ensureStudyStore();
+  const today=new Date();today.setHours(0,0,0,0);
+  const urgent=store.study.assignments.filter(a=>{
+    if(a.done)return false;
+    const d=new Date(a.due);d.setHours(0,0,0,0);
+    return (d-today)/(1000*60*60*24)<=3;
+  }).length;
+  const badge=document.getElementById('badge-study');
+  if(badge)badge.textContent=urgent;
+}
+
+function renderSubjects(){
+  ensureStudyStore();
+  const list=document.getElementById('subjects-list');
+  const none=document.getElementById('no-subjects-msg');
+  if(!list)return;
+  list.innerHTML='';
+  if(store.study.subjects.length===0){if(none)none.style.display='block';return;}
+  if(none)none.style.display='none';
+  store.study.subjects.forEach(s=>{
+    const col=SUBJ_COLORS[s.color]||SUBJ_COLORS.blue;
+    const asgns=store.study.assignments.filter(a=>a.subject===s.name&&!a.done).length;
+    list.innerHTML+=`<div class="study-subject-row">
+      <div class="subj-dot" style="background:${col.fg}"></div>
+      <div style="flex:1">
+        <div style="font-size:14px;color:var(--text)">${s.name}</div>
+        ${s.teacher?`<div style="font-size:11px;color:var(--text3)">${s.teacher}</div>`:''}
+      </div>
+      ${asgns>0?`<span class="subject-badge" style="background:${col.bg};color:${col.fg}">${asgns} pending</span>`:'<span style="font-size:11px;color:var(--text3)">All done</span>'}
+      <span style="font-size:12px;color:var(--text3);cursor:pointer;padding:3px 7px;border-radius:5px" onclick="deleteSubject(${s.id})" title="Remove">✕</span>
+    </div>`;
+  });
+}
+
+let currentAsgnFilter='all';
+function filterAssignments(btn,filter){
+  currentAsgnFilter=filter;
+  document.querySelectorAll('#study-assignments-card .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAssignments(filter);
+}
+
+function renderAssignments(filter){
+  ensureStudyStore();
+  filter=filter||currentAsgnFilter||'all';
+  const list=document.getElementById('assignments-list');
+  if(!list)return;
+  list.innerHTML='';
+  const today=new Date();today.setHours(0,0,0,0);
+  let asgns=store.study.assignments;
+  if(filter==='pending')asgns=asgns.filter(a=>!a.done);
+  if(filter==='done')asgns=asgns.filter(a=>a.done);
+  if(asgns.length===0){
+    list.innerHTML='<div style="font-size:13px;color:var(--text3);padding:12px 0">No assignments here.</div>';
+    return;
+  }
+  // Sort by due date
+  asgns=[...asgns].sort((a,b)=>new Date(a.due)-new Date(b.due));
+  asgns.forEach(a=>{
+    const subj=store.study.subjects.find(s=>s.name===a.subject);
+    const col=subj?SUBJ_COLORS[subj.color]||SUBJ_COLORS.blue:SUBJ_COLORS.white;
+    const dueDate=new Date(a.due);dueDate.setHours(0,0,0,0);
+    const diffDays=Math.round((dueDate-today)/(1000*60*60*24));
+    let dueCls='due-normal',dueLabel=a.due;
+    if(!a.done){
+      if(diffDays<0){dueCls='due-overdue';dueLabel='Overdue';}
+      else if(diffDays===0){dueCls='due-soon';dueLabel='Today';}
+      else if(diffDays===1){dueCls='due-soon';dueLabel='Tomorrow';}
+      else if(diffDays<=7){dueCls='due-soon';dueLabel='In '+diffDays+' days';}
+    }
+    const typeIcon={assignment:'📝',exam:'📋',project:'🔨',reading:'📖',quiz:'⚡'};
+    list.innerHTML+=`<div class="asgn-item" data-done="${a.done}">
+      <div class="asgn-check${a.done?' done':''}" onclick="toggleAssignment(${a.id})"></div>
+      <div style="flex:1">
+        <div style="font-size:14px;color:var(--text);${a.done?'text-decoration:line-through;color:var(--text3)':''}">${typeIcon[a.type]||'📝'} ${a.title}</div>
+        <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;align-items:center">
+          ${subj?`<span class="subject-badge" style="background:${col.bg};color:${col.fg}">${a.subject}</span>`:''}
+          <span style="font-size:11px;color:var(--text3);text-transform:capitalize">${a.type}</span>
+          ${a.notes?`<span style="font-size:11px;color:var(--text3)">${a.notes}</span>`:''}
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+        ${!a.done?`<span class="asgn-due-badge ${dueCls}">${dueLabel}</span>`:'<span style="font-size:11px;color:var(--green)">✓ Done</span>'}
+        <span style="font-size:11px;color:var(--text3);cursor:pointer" onclick="deleteAssignment(${a.id})" title="Delete">✕</span>
+      </div>
+    </div>`;
+  });
+}
+
+function toggleAssignment(id){
+  ensureStudyStore();
+  const a=store.study.assignments.find(x=>x.id===id);
+  if(!a)return;
+  const wasDone=a.done;
+  a.done=!a.done;
+  // Study streak
+  if(!wasDone&&a.done){
+    const today=new Date().toDateString();
+    if(store.study.lastStudyDate!==today){
+      const yesterday=new Date(Date.now()-86400000).toDateString();
+      store.study.studyStreak=(store.study.lastStudyDate===yesterday)?(store.study.studyStreak||0)+1:1;
+      store.study.lastStudyDate=today;
+    }
+    awardXP(40,'+40 XP — Assignment done!');
+  }
+  saveStore();
+  renderStudy();
+}
+
+function deleteAssignment(id){
+  ensureStudyStore();
+  store.study.assignments=store.study.assignments.filter(a=>a.id!==id);
+  saveStore();renderStudy();showToast('Assignment removed.');
+}
+
+function deleteSubject(id){
+  ensureStudyStore();
+  store.study.subjects=store.study.subjects.filter(s=>s.id!==id);
+  saveStore();renderStudy();showToast('Subject removed.');
+}
+
+// Modals
+function openAddSubject(){
+  const el=document.getElementById('subj-name');if(el)el.value='';
+  const t=document.getElementById('subj-teacher');if(t)t.value='';
+  document.querySelectorAll('#subj-color-pills .cat-pill').forEach(p=>p.classList.remove('selected'));
+  const first=document.querySelector('#subj-color-pills .cat-pill');if(first)first.classList.add('selected');
+  openModal('subject');
+  setTimeout(()=>document.getElementById('subj-name').focus(),80);
+}
+function selectSubjColor(el,color){
+  document.querySelectorAll('#subj-color-pills .cat-pill').forEach(p=>p.classList.remove('selected'));
+  el.classList.add('selected');
+}
+function saveSubject(){
+  ensureStudyStore();
+  const name=document.getElementById('subj-name').value.trim();
+  if(!name){showToast('Subject name is required.');return;}
+  const sel=document.querySelector('#subj-color-pills .cat-pill.selected');
+  const color=sel?sel.dataset.color:'blue';
+  store.study.subjects.push({id:Date.now(),name,teacher:document.getElementById('subj-teacher').value.trim(),color});
+  saveStore();renderStudy();closeModal('subject');showToast('Subject added.');awardXP(10,'+10 XP');
+}
+
+function openAddAssignment(){
+  ensureStudyStore();
+  ['asgn-title','asgn-notes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  // Populate subject dropdown
+  const sel=document.getElementById('asgn-subject');
+  if(sel){
+    sel.innerHTML='<option value="">— None —</option>';
+    store.study.subjects.forEach(s=>{
+      sel.innerHTML+=`<option value="${s.name}">${s.name}</option>`;
+    });
+  }
+  // Default due date to today
+  const due=document.getElementById('asgn-due');
+  if(due)due.value=new Date().toISOString().split('T')[0];
+  // Reset type pills
+  document.querySelectorAll('#asgn-type-pills .cat-pill').forEach(p=>p.classList.remove('selected'));
+  const first=document.querySelector('#asgn-type-pills .cat-pill');if(first)first.classList.add('selected');
+  openModal('assignment');
+  setTimeout(()=>document.getElementById('asgn-title').focus(),80);
+}
+function selectAsgnType(el,type){
+  document.querySelectorAll('#asgn-type-pills .cat-pill').forEach(p=>p.classList.remove('selected'));
+  el.classList.add('selected');
+}
+function saveAssignment(){
+  ensureStudyStore();
+  const title=document.getElementById('asgn-title').value.trim();
+  if(!title){showToast('Title is required.');return;}
+  const due=document.getElementById('asgn-due').value;
+  if(!due){showToast('Due date is required.');return;}
+  const selType=document.querySelector('#asgn-type-pills .cat-pill.selected');
+  const type=selType?selType.dataset.type:'assignment';
+  store.study.assignments.push({
+    id:Date.now(),title,
+    subject:document.getElementById('asgn-subject').value,
+    type,due,
+    notes:document.getElementById('asgn-notes').value.trim(),
+    done:false
+  });
+  saveStore();renderStudy();closeModal('assignment');showToast('Assignment added.');
+}
+
+// ── FILE UPLOAD & ALFRED HELP ─────────────────────────────
+const FILE_ICONS={pdf:'📄',png:'🖼',jpg:'🖼',jpeg:'🖼',gif:'🖼',webp:'🖼',txt:'📃',md:'📃',doc:'📝',docx:'📝'};
+
+function handleFileDrop(event){
+  event.preventDefault();
+  document.getElementById('upload-zone').classList.remove('drag-over');
+  const files=Array.from(event.dataTransfer.files);
+  processFiles(files);
+}
+function handleFileSelect(event){
+  processFiles(Array.from(event.target.files));
+  event.target.value=''; // reset so same file can be re-selected
+}
+function processFiles(files){
+  files.forEach(file=>{
+    if(uploadedFiles.find(f=>f.name===file.name))return; // dedupe
+    const ext=(file.name.split('.').pop()||'').toLowerCase();
+    uploadedFiles.push({name:file.name,size:file.size,ext,file});
+  });
+  renderUploadedFiles();
+}
+function renderUploadedFiles(){
+  const list=document.getElementById('uploaded-files-list');
+  const askArea=document.getElementById('file-ask-area');
+  const chips=document.getElementById('file-chips');
+  if(!list)return;
+  list.innerHTML='';
+  if(uploadedFiles.length===0){if(askArea)askArea.style.display='none';return;}
+  uploadedFiles.forEach((f,i)=>{
+    const icon=FILE_ICONS[f.ext]||'📎';
+    const kb=f.size>1024*1024?(f.size/(1024*1024)).toFixed(1)+' MB':(f.size/1024).toFixed(0)+' KB';
+    list.innerHTML+=`<div class="file-item">
+      <div class="file-icon">${icon}</div>
+      <span class="file-name">${f.name}</span>
+      <span class="file-size">${kb}</span>
+      <span class="file-remove" onclick="removeFile(${i})">✕</span>
+    </div>`;
+  });
+  if(askArea)askArea.style.display='block';
+  // quick chips
+  if(chips){
+    chips.innerHTML='';
+    ['Summarize this','Explain key concepts','Make flashcards','What are the main points?','Quiz me'].forEach(q=>{
+      const ch=document.createElement('div');ch.className='chip';ch.textContent=q;
+      ch.onclick=()=>{document.getElementById('file-question-input').value=q;};
+      chips.appendChild(ch);
+    });
+  }
+}
+function removeFile(i){
+  uploadedFiles.splice(i,1);
+  renderUploadedFiles();
+  if(uploadedFiles.length===0){
+    const ra=document.getElementById('file-response-area');if(ra)ra.style.display='none';
+  }
+}
+
+async function fileToBase64(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(r.result.split(',')[1]);
+    r.onerror=()=>rej(new Error('Read failed'));
+    r.readAsDataURL(file);
+  });
+}
+function getMimeType(ext){
+  const map={pdf:'application/pdf',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',webp:'image/webp'};
+  return map[ext]||null;
+}
+
+async function askAlfredAboutFiles(){
+  const question=document.getElementById('file-question-input').value.trim();
+  if(!question&&uploadedFiles.length===0){showToast('Please upload a file and type a question.');return;}
+  if(uploadedFiles.length===0){showToast('Please upload at least one file.');return;}
+  const key=getApiKey();
+  if(!key){document.getElementById('api-key-banner').style.display='flex';showPanel('alfred','Alfred');showToast('Please set your Anthropic API key first.');return;}
+
+  const ra=document.getElementById('file-response-area');
+  const rc=document.getElementById('file-response-content');
+  if(ra)ra.style.display='block';
+  if(rc)rc.textContent='◆ Alfred is reading your files…';
+
+  const userQuestion=question||'Please summarize and explain the key concepts in these files.';
+
+  // Build content array
+  const contentParts=[];
+
+  for(const f of uploadedFiles){
+    const ext=f.ext;
+    const mime=getMimeType(ext);
+    if(mime){
+      // Image or PDF — send as base64
+      try{
+        const b64=await fileToBase64(f.file);
+        if(ext==='pdf'){
+          contentParts.push({type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}});
+        } else {
+          contentParts.push({type:'image',source:{type:'base64',media_type:mime,data:b64}});
+        }
+      }catch(e){contentParts.push({type:'text',text:`[Could not read file: ${f.name}]`});}
+    } else {
+      // Text file — read as text
+      try{
+        const text=await f.file.text();
+        contentParts.push({type:'text',text:`=== File: ${f.name} ===\n${text}`});
+      }catch(e){contentParts.push({type:'text',text:`[Could not read file: ${f.name}]`});}
+    }
+  }
+
+  contentParts.push({type:'text',text:userQuestion});
+
+  const firstName=currentUser?.name?.split(' ')[0]||'Student';
+
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':key,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-calls':'true'
+      },
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:2048,
+        system:`You are Alfred, a brilliant and caring academic tutor helping ${firstName} with their schoolwork. Be clear, educational, and encouraging. Format responses with helpful structure — use bullet points, numbered lists, and clear sections when appropriate. If making flashcards, format them clearly as Q: / A: pairs.`,
+        messages:[{role:'user',content:contentParts}]
+      })
+    });
+    if(!res.ok){const e=await res.json();throw new Error(e.error?.message||'HTTP '+res.status);}
+    const data=await res.json();
+    const reply=data.content.filter(b=>b.type==='text').map(b=>b.text).join('\n');
+    if(rc)rc.textContent=reply||'Done.';
+    awardXP(20,'+20 XP — Study session!');
+  }catch(err){
+    const raw=err.message||'';
+    let msg='❌ ';
+    if(raw.includes('Load failed')||raw.includes('Failed to fetch')) msg+='瀏覽器封鎖了請求。請用 Live Server 或 npx serve 開啟，不要直接開 file://';
+    else if(raw.includes('401')) msg+='API Key 無效，請重新確認。';
+    else if(raw.includes('429')) msg+='請求太頻繁，請稍後再試。';
+    else msg+=raw;
+    if(rc)rc.textContent=msg;
+  }
+}
+
+function quickStudyAsk(q){
+  showPanel('alfred','Alfred');
+  document.getElementById('alfred-input').value=q;
+  sendToAlfred();
+}
+
+// ── STUDY TIMER ───────────────────────────────────────────
+function setTimer(minutes){
+  resetTimer();
+  timerTotal=minutes*60;
+  timerSeconds=timerTotal;
+  updateTimerDisplay();
+}
+function updateTimerDisplay(){
+  const m=Math.floor(timerSeconds/60).toString().padStart(2,'0');
+  const s=(timerSeconds%60).toString().padStart(2,'0');
+  const el=document.getElementById('timer-display');
+  if(el)el.textContent=m+':'+s;
+}
+function toggleTimer(){
+  const btn=document.getElementById('timer-btn');
+  if(timerRunning){
+    clearInterval(timerInterval);timerRunning=false;
+    if(btn)btn.textContent='▶ Resume';
+    document.getElementById('timer-display')?.classList.remove('running');
+  } else {
+    timerRunning=true;
+    if(btn)btn.textContent='⏸ Pause';
+    document.getElementById('timer-display')?.classList.add('running');
+    document.getElementById('timer-display')?.classList.remove('ended');
+    timerInterval=setInterval(()=>{
+      timerSeconds--;
+      updateTimerDisplay();
+      if(timerSeconds<=0){
+        clearInterval(timerInterval);timerRunning=false;
+        if(btn)btn.textContent='▶ Start';
+        document.getElementById('timer-display')?.classList.remove('running');
+        document.getElementById('timer-display')?.classList.add('ended');
+        showToast('⏰ Study session complete!');
+        awardXP(30,'+30 XP — Study session!');
+        // Update streak
+        ensureStudyStore();
+        const today=new Date().toDateString();
+        if(store.study.lastStudyDate!==today){
+          const yesterday=new Date(Date.now()-86400000).toDateString();
+          store.study.studyStreak=(store.study.lastStudyDate===yesterday)?(store.study.studyStreak||0)+1:1;
+          store.study.lastStudyDate=today;
+          saveStore();renderStudy();
+        }
+      }
+    },1000);
+  }
+}
+function resetTimer(){
+  clearInterval(timerInterval);timerRunning=false;
+  timerSeconds=timerTotal;
+  updateTimerDisplay();
+  const btn=document.getElementById('timer-btn');if(btn)btn.textContent='▶ Start';
+  document.getElementById('timer-display')?.classList.remove('running','ended');
+}
+
+// Extend Alfred's system prompt to know about study data
+const _origBuildSystem=buildSystem;
+buildSystem=function(){
+  ensureStudyStore();
+  const base=_origBuildSystem();
+  const subjects=store.study.subjects.map(s=>`- ${s.name} (${s.teacher||'?'})`).join('\n');
+  const asgns=store.study.assignments.filter(a=>!a.done).map(a=>`- ${a.title} [${a.subject}] due ${a.due} (${a.type})`).join('\n');
+  return base+`\n\n【學習科目】\n${subjects||'（尚無）'}\n\n【待完成作業/考試】\n${asgns||'（尚無）'}`;
+};
+
+// Extend Alfred tools with study tools
+const STUDY_TOOLS=[
+  {
+    name:'add_assignment',
+    description:'Add a new assignment, exam, quiz or project for the student. Use when they mention homework, tests, deadlines.',
+    input_schema:{
+      type:'object',
+      properties:{
+        title:{type:'string',description:'Assignment title'},
+        subject:{type:'string',description:'Subject name'},
+        type:{type:'string',enum:['assignment','exam','project','reading','quiz']},
+        due:{type:'string',description:'Due date in YYYY-MM-DD format'},
+        notes:{type:'string',description:'Additional notes'}
+      },
+      required:['title','due']
+    }
+  },
+  {
+    name:'complete_assignment',
+    description:'Mark an assignment as done.',
+    input_schema:{
+      type:'object',
+      properties:{keyword:{type:'string',description:'Keyword from the assignment title'}},
+      required:['keyword']
+    }
+  }
+];
+
+// Merge study tools into ALFRED_TOOLS
+ALFRED_TOOLS.push(...STUDY_TOOLS);
+
+// Extend executeTool for study tools
+const _origExecuteTool=executeTool;
+executeTool=async function(name,input){
+  if(name==='add_assignment'){
+    ensureStudyStore();
+    store.study.assignments.push({id:Date.now(),title:input.title,subject:input.subject||'',type:input.type||'assignment',due:input.due,notes:input.notes||'',done:false});
+    saveStore();renderStudy();
+    return `Added assignment: "${input.title}" due ${input.due}`;
+  }
+  if(name==='complete_assignment'){
+    ensureStudyStore();
+    const kw=input.keyword.toLowerCase();
+    const a=store.study.assignments.find(x=>x.title.toLowerCase().includes(kw));
+    if(a){a.done=true;saveStore();renderStudy();return `Marked "${a.title}" as complete ✓`;}
+    return `Assignment with "${input.keyword}" not found`;
+  }
+  return _origExecuteTool(name,input);
+};
+// ── CINEMATIC DASHBOARD ──────────────────────────────────
+
+// Ambient particle canvas
+function initDashCanvas() {
+  const canvas = document.getElementById('dash-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let W, H, particles = [];
+
+  function resize() {
+    W = canvas.width = canvas.offsetWidth;
+    H = canvas.height = canvas.offsetHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  for (let i = 0; i < 22; i++) {
+    particles.push({
+      x: Math.random() * 1200, y: Math.random() * 800,
+      r: Math.random() * 90 + 20,
+      vx: (Math.random() - 0.5) * 0.18,
+      vy: (Math.random() - 0.5) * 0.12,
+      alpha: Math.random() * 0.07 + 0.01,
+      phase: Math.random() * Math.PI * 2
+    });
+  }
+
+  let frame = 0;
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    frame++;
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < -p.r*2) p.x = W+p.r; if (p.x > W+p.r*2) p.x = -p.r;
+      if (p.y < -p.r*2) p.y = H+p.r; if (p.y > H+p.r*2) p.y = -p.r;
+      const pulse = Math.sin(frame*0.008 + p.phase)*0.03;
+      const g = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r);
+      g.addColorStop(0, `rgba(255,255,255,${p.alpha+pulse})`);
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle = g; ctx.fill();
+    });
+    // Scan line
+    const scanY = (frame*0.4) % H;
+    const scanG = ctx.createLinearGradient(0,scanY-60,0,scanY+60);
+    scanG.addColorStop(0,'rgba(255,255,255,0)');
+    scanG.addColorStop(0.5,'rgba(255,255,255,0.025)');
+    scanG.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle = scanG; ctx.fillRect(0,scanY-60,W,120);
+    requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+// Staggered letter-by-letter greeting
+function animateDashGreeting() {
+  const hour = new Date().getHours();
+  const greetWord = hour<12?'Good morning':hour<17?'Good afternoon':'Good evening';
+  const first = currentUser?.name?.split(' ')[0]||'';
+  const timeEl = document.getElementById('dash-greeting-time');
+  const wordEl = document.getElementById('dash-greeting-word');
+  const subEl  = document.getElementById('dash-greeting-sub');
+
+  const fmtTime = () => {
+    const n = new Date();
+    return n.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'}).toUpperCase()
+      + '  ·  ' + n.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  };
+  if (timeEl) { timeEl.textContent = fmtTime(); setInterval(()=>{ timeEl.textContent=fmtTime(); },30000); }
+
+  if (wordEl) {
+    const fullText = greetWord+', '+first+'.';
+    wordEl.textContent = '';
+    wordEl.style.animation = 'word-in 0.9s cubic-bezier(0.22,1,0.36,1) both';
+    let i = 0;
+    const iv = setInterval(()=>{ wordEl.textContent += fullText[i++]; if(i>=fullText.length)clearInterval(iv); }, 38);
+  }
+
+  if (subEl && store) {
+    ensureStudyStore && ensureStudyStore();
+    const pending = store.tasks.today.filter(t=>!t.done).length;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const dueSoon = (store.study?.assignments||[]).filter(a=>{
+      if(a.done)return false;
+      const d=new Date(a.due);d.setHours(0,0,0,0);
+      return (d-today)/(1000*60*60*24)<=7;
+    }).length;
+    const parts=[];
+    if(pending>0) parts.push(pending+' task'+(pending>1?'s':'')+' today');
+    if(dueSoon>0) parts.push(dueSoon+' assignment'+(dueSoon>1?'s':'')+' due soon');
+    subEl.textContent = parts.length ? parts.join(' · ') : 'All clear. A great day ahead.';
+  }
+}
+
+// Ticker tape
+function buildTicker() {
+  const el = document.getElementById('dash-ticker');
+  if (!el||!store) return;
+  ensureStudyStore && ensureStudyStore();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const items = [];
+  store.tasks.today.filter(t=>!t.done).forEach(t=>items.push({icon:'✓',text:t.title}));
+  (store.study?.assignments||[]).filter(a=>!a.done).sort((a,b)=>new Date(a.due)-new Date(b.due)).slice(0,4).forEach(a=>{
+    const d=new Date(a.due);d.setHours(0,0,0,0);
+    const diff=Math.round((d-today)/(1000*60*60*24));
+    items.push({icon:'◧',text:a.title+'  ·  '+(diff===0?'TODAY':diff===1?'TOMORROW':'IN '+diff+'D')});
+  });
+  if(store.xp) items.push({icon:'◆',text:'LV '+(store.xp.level||1)+'  ·  '+(store.xp.total||0)+' XP  ·  '+(store.xp.streak||0)+' DAY STREAK'});
+  items.push({icon:'○',text:new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'}).toUpperCase()});
+  if(items.length===0) items.push({icon:'◆',text:'ALFRED LIFE OS  ·  STUDENT EDITION'});
+  const mk=({icon,text})=>`<span class="ticker-item"><span>${icon}</span><span>${text}</span><span class="ticker-sep">·</span></span>`;
+  el.innerHTML = items.map(mk).join('')+items.map(mk).join('');
+}
+
+// Arc rings + focus strip updater
+function updateDashTiles() {
+  if(!store) return;
+  ensureStudyStore && ensureStudyStore();
+  const circ = 213;
+
+  // Tasks arc
+  const total = store.tasks.today.length||1;
+  const done  = store.tasks.today.filter(t=>t.done).length;
+  const arcT = document.getElementById('arc-tasks');
+  if(arcT) arcT.style.strokeDashoffset = circ*(1-done/total);
+  setEl2('tile-tasks-num', store.tasks.today.filter(t=>!t.done).length);
+  setEl2('tile-tasks-sub', done+' of '+total+' done');
+
+  // Study arc
+  const today = new Date(); today.setHours(0,0,0,0);
+  const allA = store.study?.assignments||[];
+  const dueSoon = allA.filter(a=>{
+    if(a.done)return false;
+    const d=new Date(a.due);d.setHours(0,0,0,0);
+    return (d-today)/(1000*60*60*24)<=7;
+  }).length;
+  const donePct = allA.length ? allA.filter(a=>a.done).length/allA.length : 0;
+  const arcS = document.getElementById('arc-study');
+  if(arcS) arcS.style.strokeDashoffset = circ*(1-donePct);
+  setEl2('tile-study-num', dueSoon);
+  setEl2('tile-study-sub', dueSoon===0?'nothing due soon 🎉':'due within 7 days');
+
+  // Focus strip
+  const nt = store.tasks.today.find(t=>!t.done);
+  setEl2('focus-task-title', nt?nt.title:'All tasks done ✓');
+  setEl2('focus-task-meta',  nt?(nt.cat||''):'');
+  const na = allA.filter(a=>!a.done).sort((a,b)=>new Date(a.due)-new Date(b.due))[0];
+  setEl2('focus-study-title', na?na.title:'No assignments due 🎉');
+  if(na){
+    const d=new Date(na.due);d.setHours(0,0,0,0);
+    const diff=Math.round((d-today)/(1000*60*60*24));
+    setEl2('focus-study-meta',(na.subject?na.subject+'  ·  ':'')+(diff===0?'Due TODAY':diff===1?'Due tomorrow':'Due in '+diff+' days'));
+  } else setEl2('focus-study-meta','');
+}
+function setEl2(id,val){const e=document.getElementById(id);if(e)e.textContent=val;}
+
+function quickDashChip(q){
+  showPanel('alfred','Alfred');
+  document.getElementById('alfred-input').value=q;
+  sendToAlfred();
+}
+
+// Particle burst on completion
+function triggerParticleBurst(x,y){
+  const colors=['#fff','#4ade80','#60a5fa','#facc15'];
+  for(let i=0;i<14;i++){
+    const p=document.createElement('div');
+    p.className='burst-particle';
+    const angle=(i/14)*Math.PI*2;
+    const dist=40+Math.random()*40;
+    p.style.cssText=`left:${x}px;top:${y}px;--dx:${Math.cos(angle)*dist}px;--dy:${Math.sin(angle)*dist}px;background:${colors[i%4]};animation-delay:${Math.random()*0.1}s`;
+    document.body.appendChild(p);
+    setTimeout(()=>p.remove(),900);
+  }
+}
+document.addEventListener('click',e=>{
+  const check=e.target.closest('.task-check,.asgn-check');
+  if(check&&!check.classList.contains('done')){
+    const r=check.getBoundingClientRect();
+    triggerParticleBurst(r.left+r.width/2,r.top+r.height/2);
+  }
+});
+
+// Spectacular panel transition override
+(function patchCinematicTransition(){
+  const _orig=showPanel;
+  showPanel=function(id,title){
+    const current=document.querySelector('.panel.active');
+    if(current&&current.id!=='panel-'+id){
+      current.style.transition='opacity 0.18s ease,filter 0.18s ease,transform 0.18s ease';
+      current.style.opacity='0'; current.style.filter='blur(8px)'; current.style.transform='scale(0.97)';
+      setTimeout(()=>{
+        current.style.transition=''; current.style.opacity=''; current.style.filter=''; current.style.transform='';
+        _orig(id,title);
+        const incoming=document.getElementById('panel-'+id);
+        if(incoming){ incoming.style.animation='none'; incoming.offsetHeight; incoming.style.animation='panel-liquid-in 0.45s cubic-bezier(0.22,1,0.36,1) both'; }
+        if(id==='dashboard'){ updateDashTiles(); buildTicker(); animateDashGreeting(); }
+      },180);
+    } else { _orig(id,title); }
+  };
+})();
+
+function initDashboard(){
+  initDashCanvas();
+  animateDashGreeting();
+  buildTicker();
+  setTimeout(updateDashTiles,300);
+}
+
+const _origBootApp=bootApp;
+bootApp=function(nameArg){
+  _origBootApp(nameArg);
+  setTimeout(initDashboard,80);
+};
+
+// ─── ANIMATION HELPERS ────────────────────────────────────
+
+// Smooth topbar title transition
+function animateTitle(newTitle){
+  const el=document.getElementById('topbar-title');
+  if(!el){document.getElementById('topbar-title').textContent=newTitle;return;}
+  el.style.opacity='0';
+  setTimeout(()=>{el.textContent=newTitle;el.style.opacity='1';},150);
+}
+
+// XP bar glow flash on gain
+function flashXPBar(){
+  const fill=document.getElementById('xp-fill');
+  if(!fill)return;
+  fill.classList.add('gaining');
+  setTimeout(()=>fill.classList.remove('gaining'),500);
+}
+
+// Patch awardXP to flash
+const _origAwardXP=awardXP;
+awardXP=function(amount,label){
+  _origAwardXP(amount,label);
+  flashXPBar();
+};
+
+// Patch showPanel to animate title
+const _origShowPanel=showPanel;
+showPanel=function(id,title){
+  _origShowPanel(id,title);
+  animateTitle(title);
+};
+
+// IntersectionObserver for scroll fade-ins
+const observer=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');});
+},{threshold:0.1});
+function observeFadeItems(){
+  document.querySelectorAll('.fade-in-item').forEach(el=>observer.observe(el));
+}
+
+// Re-trigger panel animation on every showPanel call
+// (CSS animation only fires once unless we re-add the class)
+const _patchPanelAnim=showPanel;
+showPanel=function(id,title){
+  // Remove active from all panels first (handled by _origShowPanel already)
+  // Re-trigger animation by cloning trick
+  const panel=document.getElementById('panel-'+id);
+  if(panel){
+    panel.style.animation='none';
+    panel.offsetHeight; // reflow
+    panel.style.animation='';
+  }
+  _patchPanelAnim(id,title);
+};
+
+// Auth box: stagger field groups on load
+window.addEventListener('DOMContentLoaded',()=>{
+  document.querySelectorAll('.field-group').forEach((el,i)=>{
+    el.style.opacity='0';
+    el.style.transform='translateY(10px)';
+    el.style.transition='opacity 0.25s ease, transform 0.25s ease';
+    setTimeout(()=>{
+      el.style.opacity='1';
+      el.style.transform='translateY(0)';
+    },120+i*60);
+  });
+});
+
+// ─── XP / LEVEL SYSTEM ────────────────────────────────────
+const XP_LEVELS=[
+  {level:1,name:'Initiate',   desc:'Every journey begins with a single task.',xpNeeded:0,total:0},
+  {level:2,name:'Apprentice', desc:'You\'re building momentum. Keep going.',xpNeeded:100,total:100},
+  {level:3,name:'Operator',   desc:'Consistent. Reliable. Focused.',xpNeeded:250,total:350},
+  {level:4,name:'Specialist', desc:'You know what matters and you do it.',xpNeeded:500,total:850},
+  {level:5,name:'Tactician',  desc:'Complexity doesn\'t slow you down.',xpNeeded:750,total:1600},
+  {level:6,name:'Strategist', desc:'You see the full picture.',xpNeeded:1000,total:2600},
+  {level:7,name:'Director',   desc:'Others would call this discipline. You call it habit.',xpNeeded:1500,total:4100},
+  {level:8,name:'Architect',  desc:'You build systems, not just habits.',xpNeeded:2000,total:6100},
+  {level:9,name:'Commander',  desc:'Nothing slips through. Nothing.',xpNeeded:3000,total:9100},
+  {level:10,name:'Sovereign', desc:'You are the algorithm.',xpNeeded:5000,total:14100}
+];
+
+function getXPState(){
+  if(!store||!store.xp) return {total:0,level:1,streak:0,lastCompleted:null};
+  return store.xp;
+}
+
+function getCurrentLevel(totalXP){
+  let current=XP_LEVELS[0];
+  for(const l of XP_LEVELS){
+    if(totalXP>=l.total) current=l;
+    else break;
+  }
+  return current;
+}
+function getNextLevel(currentLevel){
+  return XP_LEVELS.find(l=>l.level===currentLevel.level+1)||null;
+}
+
+function renderXPBar(){
+  const xp=getXPState();
+  const cur=getCurrentLevel(xp.total);
+  const next=getNextLevel(cur);
+  const pct=next?Math.min(100,Math.round(((xp.total-cur.total)/next.xpNeeded)*100)):100;
+  const curXPInLevel=xp.total-cur.total;
+  const el_badge=document.getElementById('xp-level-badge');
+  const el_name=document.getElementById('xp-level-name');
+  const el_pts=document.getElementById('xp-pts-label');
+  const el_fill=document.getElementById('xp-fill');
+  const el_streak=document.getElementById('xp-streak-row');
+  const el_streak_icon=document.getElementById('xp-streak-icon');
+  const el_streak_label=document.getElementById('xp-streak-label');
+  if(el_badge) el_badge.textContent='LV '+cur.level;
+  if(el_name) el_name.textContent=cur.name.toUpperCase();
+  if(el_pts) el_pts.textContent=next?(curXPInLevel+' / '+next.xpNeeded+' XP'):'MAX';
+  if(el_fill) el_fill.style.width=pct+'%';
+  const streak=xp.streak||0;
+  if(el_streak_icon) el_streak_icon.textContent=streak>0?'◆':'○';
+  if(el_streak_label) el_streak_label.textContent=streak+' day streak';
+  if(el_streak) el_streak.classList.toggle('active',streak>0);
+}
+
+function awardXP(amount, label){
+  if(!store) return;
+  if(!store.xp) store.xp={total:0,level:1,streak:0,lastCompleted:null};
+  const prevTotal=store.xp.total;
+  const prevLevel=getCurrentLevel(prevTotal);
+  store.xp.total+=amount;
+  // Update streak
+  const today=new Date().toDateString();
+  if(store.xp.lastCompleted!==today){
+    const yesterday=new Date(Date.now()-86400000).toDateString();
+    store.xp.streak=(store.xp.lastCompleted===yesterday)?(store.xp.streak||0)+1:1;
+    store.xp.lastCompleted=today;
+    if(store.xp.streak>1){
+      const bonus=Math.min(store.xp.streak*5,50);
+      store.xp.total+=bonus;
+    }
+  }
+  const newLevel=getCurrentLevel(store.xp.total);
+  saveStore();
+  renderXPBar();
+  showXPPopup(label||'+'+amount+' XP');
+  if(newLevel.level>prevLevel.level){
+    setTimeout(()=>showLevelUp(newLevel),800);
+  }
+}
+
+function showXPPopup(text){
+  const el=document.getElementById('xp-popup');
+  if(!el)return;
+  el.textContent=text;
+  el.classList.remove('hide');
+  el.classList.add('show');
+  setTimeout(()=>{el.classList.remove('show');el.classList.add('hide');},1800);
+}
+
+function showLevelUp(levelData){
+  const overlay=document.getElementById('levelup-overlay');
+  document.getElementById('lu-num').textContent=levelData.level;
+  document.getElementById('lu-name').textContent=levelData.name;
+  document.getElementById('lu-desc').textContent=levelData.desc;
+  overlay.classList.add('show');
+}
+function closeLevelUp(){
+  document.getElementById('levelup-overlay').classList.remove('show');
+}
+
+// Also award XP for adding people, places, transactions
+const _origSavePerson=savePerson;
+// Wrap after definition — done inline below
+
+
+</script>
+</body>
+</html>
